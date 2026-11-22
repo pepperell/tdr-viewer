@@ -24,7 +24,7 @@ public sealed partial class EditorViewModel : ObservableObject
     {
         _catalog = catalog;
         _instrument = instrument;
-        _cableConnectorChoices = ConnectorChoices.Build(catalog, "Cable default");
+        _cableConnectorChoices = ConnectorChoices.Build(catalog);
         PendingConnection = new PendingConnectionViewModel(this);
         SelectedNodes.CollectionChanged += (_, _) =>
             SelectedNode = SelectedNodes.Count == 1 ? SelectedNodes[0] : null;
@@ -242,7 +242,9 @@ public sealed partial class EditorViewModel : ObservableObject
         if (e.PropertyName is nameof(NodeViewModelBase.IsSelected)
             or nameof(CableNodeViewModel.Title)
             or nameof(CableNodeViewModel.LengthLog)
-            or nameof(CableNodeViewModel.EffectiveConnectorsNote)
+            or nameof(CableNodeViewModel.Z0DefaultNote)
+            or nameof(CableNodeViewModel.VfDefaultNote)
+            or nameof(CableNodeViewModel.ConnectorDefaultNote)
             or nameof(LoadNodeViewModel.UsesR)
             or nameof(LoadNodeViewModel.UsesL)
             or nameof(LoadNodeViewModel.UsesC))

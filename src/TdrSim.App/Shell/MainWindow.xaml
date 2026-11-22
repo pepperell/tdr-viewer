@@ -343,10 +343,16 @@
                                                 Margin="0,0,6,0"
                                                 VerticalAlignment="Center" />
                                     </DockPanel>
-                                    <TextBlock Text="Z0 override (Ω)" Style="{StaticResource InspectorLabel}" />
-                                    <TextBox Text="{Binding Z0OverrideOhms, TargetNullValue=''}" />
-                                    <TextBlock Text="VF override (0–1)" Style="{StaticResource InspectorLabel}" />
-                                    <TextBox Text="{Binding VfOverride, TargetNullValue=''}" />
+                                    <TextBlock Text="Z0 (Ω)" Style="{StaticResource InspectorLabel}" />
+                                    <TextBox AutomationProperties.Name="Z0"
+                                             Text="{Binding Z0Ohms, TargetNullValue=''}" />
+                                    <TextBlock Text="{Binding Z0DefaultNote}"
+                                               Style="{StaticResource InspectorNote}" />
+                                    <TextBlock Text="VF (0–1)" Style="{StaticResource InspectorLabel}" />
+                                    <TextBox AutomationProperties.Name="VF"
+                                             Text="{Binding Vf, TargetNullValue=''}" />
+                                    <TextBlock Text="{Binding VfDefaultNote}"
+                                               Style="{StaticResource InspectorNote}" />
                                     <TextBlock Text="Connector, end A" Style="{StaticResource InspectorLabel}" />
                                     <ComboBox AutomationProperties.Name="Connector A"
                                               ItemsSource="{Binding ConnectorChoiceList}"
@@ -357,9 +363,9 @@
                                               ItemsSource="{Binding ConnectorChoiceList}"
                                               SelectedItem="{Binding SelectedConnectorB}"
                                               DisplayMemberPath="Label" />
-                                    <TextBlock Text="{Binding EffectiveConnectorsNote}"
+                                    <TextBlock Text="{Binding ConnectorDefaultNote}"
                                                Style="{StaticResource InspectorNote}" />
-                                    <TextBlock Text="Blank override = preset value."
+                                    <TextBlock Text="Clear a box to return to the preset default."
                                                Style="{StaticResource InspectorNote}" />
                                 </StackPanel>
                             </DataTemplate>
@@ -443,26 +449,37 @@
                                     <ComboBox ItemsSource="{Binding Presets}"
                                               SelectedItem="{Binding SelectedPreset}"
                                               DisplayMemberPath="Name" />
-                                    <TextBlock Text="Rise time override (ps)" Style="{StaticResource InspectorLabel}" />
-                                    <TextBox Text="{Binding RiseTimePsOverride, TargetNullValue=''}" />
-                                    <TextBlock Text="Amplitude override (V)" Style="{StaticResource InspectorLabel}" />
-                                    <TextBox Text="{Binding AmplitudeVoltsOverride, TargetNullValue=''}" />
-                                    <TextBlock Text="Source impedance override (Ω)" Style="{StaticResource InspectorLabel}" />
-                                    <TextBox Text="{Binding SourceImpedanceOverrideOhms, TargetNullValue=''}" />
+                                    <TextBlock Text="Rise time (ps)" Style="{StaticResource InspectorLabel}" />
+                                    <TextBox AutomationProperties.Name="Rise time"
+                                             Text="{Binding RiseTimePs, TargetNullValue=''}" />
+                                    <TextBlock Text="{Binding RiseTimeDefaultNote}"
+                                               Style="{StaticResource InspectorNote}" />
+                                    <TextBlock Text="Amplitude (V)" Style="{StaticResource InspectorLabel}" />
+                                    <TextBox AutomationProperties.Name="Amplitude"
+                                             Text="{Binding AmplitudeVolts, TargetNullValue=''}" />
+                                    <TextBlock Text="{Binding AmplitudeDefaultNote}"
+                                               Style="{StaticResource InspectorNote}" />
+                                    <TextBlock Text="Source impedance (Ω)" Style="{StaticResource InspectorLabel}" />
+                                    <TextBox AutomationProperties.Name="Source impedance"
+                                             Text="{Binding SourceImpedanceOhms, TargetNullValue=''}" />
+                                    <TextBlock Text="{Binding ImpedanceDefaultNote}"
+                                               Style="{StaticResource InspectorNote}" />
                                     <TextBlock Text="Panel connector" Style="{StaticResource InspectorLabel}" />
                                     <ComboBox AutomationProperties.Name="Panel connector"
                                               ItemsSource="{Binding ConnectorChoiceList}"
                                               SelectedItem="{Binding SelectedPortConnector}"
                                               DisplayMemberPath="Label" />
-                                    <TextBlock Text="{Binding EffectivePortConnectorNote}"
+                                    <TextBlock Text="{Binding PortConnectorDefaultNote}"
                                                Style="{StaticResource InspectorNote}" />
-                                    <TextBlock Text="Noise RMS (mV, blank = preset floor, 0 = off)" Style="{StaticResource InspectorLabel}" />
+                                    <TextBlock Text="Noise RMS (mV)" Style="{StaticResource InspectorLabel}" />
                                     <TextBox AutomationProperties.Name="Noise RMS"
-                                             Text="{Binding NoiseRmsMillivolts, TargetNullValue=''}" />
+                                             Text="{Binding NoiseRms, TargetNullValue=''}" />
+                                    <TextBlock Text="{Binding NoiseDefaultNote}"
+                                               Style="{StaticResource InspectorNote}" />
                                     <TextBlock Text="Averaging (sweeps)" Style="{StaticResource InspectorLabel}" />
                                     <ComboBox ItemsSource="{Binding AveragingOptions}"
                                               SelectedItem="{Binding AveragingSweeps}" />
-                                    <TextBlock Text="Blank override = preset value. Select a node to edit it here."
+                                    <TextBlock Text="Clear a box to return to the preset default. Select a node to edit it here."
                                                Style="{StaticResource InspectorNote}" />
                                 </StackPanel>
                             </DataTemplate>

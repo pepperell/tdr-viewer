@@ -98,19 +98,45 @@ public sealed partial class CableNodeViewModel : NodeViewModelBase
             _presetId = value.Id;
             OnPropertyChanged();
             OnPropertyChanged(nameof(Title));
-            OnPropertyChanged(nameof(EffectiveConnectorsNote));
+            OnPropertyChanged(nameof(Z0Ohms));
+            OnPropertyChanged(nameof(Vf));
+            OnPropertyChanged(nameof(SelectedConnectorA));
+            OnPropertyChanged(nameof(SelectedConnectorB));
+            OnPropertyChanged(nameof(Z0DefaultNote));
+            OnPropertyChanged(nameof(VfDefaultNote));
+            OnPropertyChanged(nameof(ConnectorDefaultNote));
         }
     }
 
+    // ---- effective values shown in the inspector ----
+    // Boxes and combos are pre-filled with what the engine will use; entering the
+    // preset's own value (or clearing a box) stores null, i.e. "track the preset".
+
+    public double? Z0Ohms
+    {
+        get => Z0OverrideOhms ?? SelectedPreset?.Z0Ohms;
+        set => Z0OverrideOhms = Normalize(value, SelectedPreset?.Z0Ohms);
+    }
+
+    public double? Vf
+    {
+        get => VfOverride ?? SelectedPreset?.VelocityFactor;
+        set => VfOverride = Normalize(value, SelectedPreset?.VelocityFactor);
+    }
+
+    public string Z0DefaultNote => DefaultNote(SelectedPreset?.Z0Ohms);
+
+    public string VfDefaultNote => DefaultNote(SelectedPreset?.VelocityFactor);
+
     public ConnectorChoice? SelectedConnectorA
     {
-        get => ConnectorChoiceList.FirstOrDefault(c => c.Id == _connectorAId);
+        get => ResolveChoice(_connectorAId);
         set => SetConnector(ref _connectorAId, value, nameof(SelectedConnectorA));
     }
 
     public ConnectorChoice? SelectedConnectorB
     {
-        get => ConnectorChoiceList.FirstOrDefault(c => c.Id == _connectorBId);
+        get => ResolveChoice(_connectorBId);
         set => SetConnector(ref _connectorBId, value, nameof(SelectedConnectorB));
     }
 
@@ -118,21 +144,34 @@ public sealed partial class CableNodeViewModel : NodeViewModelBase
     public void InitConnectors(string? connectorAId, string? connectorBId)
         => (_connectorAId, _connectorBId) = (connectorAId, connectorBId);
 
-    public string EffectiveConnectorsNote =>
-        $"Fitted: A = {Effective(_connectorAId)}, B = {Effective(_connectorBId)}."
-        + " Mating hardware is added automatically where ends meet.";
+    public string ConnectorDefaultNote =>
+        $"Default: {ConnectorChoices.EffectiveName(ConnectorChoiceList, null, SelectedPreset?.DefaultConnector)}"
+        + " (both ends). Mating hardware is added automatically where ends meet.";
 
-    private string Effective(string? overrideId)
-        => ConnectorChoices.EffectiveName(ConnectorChoiceList, overrideId, SelectedPreset?.DefaultConnector);
+    private ConnectorChoice? ResolveChoice(string? overrideId)
+    {
+        string effective = overrideId ?? SelectedPreset?.DefaultConnector ?? "none";
+        return ConnectorChoiceList.FirstOrDefault(c => c.Id == effective)
+            ?? ConnectorChoiceList.FirstOrDefault(c => c.Id == "none");
+    }
 
     private void SetConnector(ref string? field, ConnectorChoice? value, string propertyName)
     {
-        if (value is null || value.Id == field)
+        if (value is null)
             return;
-        field = value.Id;
+        string presetDefault = SelectedPreset?.DefaultConnector ?? "none";
+        string? stored = value.Id == presetDefault ? null : value.Id;
+        if (stored == field)
+            return;
+        field = stored;
         OnPropertyChanged(propertyName);
-        OnPropertyChanged(nameof(EffectiveConnectorsNote));
     }
+
+    private static string DefaultNote(double? value)
+        => value is null ? "Default: —" : $"Default: {value:0.###}";
+
+    private static double? Normalize(double? value, double? presetDefault)
+        => value is null || value == presetDefault ? null : value;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Title))]
@@ -140,9 +179,11 @@ public sealed partial class CableNodeViewModel : NodeViewModelBase
     private double _lengthM = 30;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Z0Ohms))]
     private double? _z0OverrideOhms;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Vf))]
     private double? _vfOverride;
 
     /// <summary>Log10 companion for the 0.1-1000 m inspector slider.</summary>

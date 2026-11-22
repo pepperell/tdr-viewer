@@ -2,18 +2,18 @@ using TdrSim.Core.Catalog;
 
 namespace TdrSim.App.Editor;
 
-/// <summary>One entry of a connector-type combo: null id = inherit the preset's
-/// default, "none" = bare end, otherwise a ConnectorFamilySpec id.</summary>
-public sealed record ConnectorChoice(string? Id, string Label)
+/// <summary>One entry of a connector-type combo: "none" = bare end, otherwise a
+/// ConnectorFamilySpec id. Combos show the EFFECTIVE family; the view model stores
+/// null (= track the preset) whenever the selection equals the preset's default.</summary>
+public sealed record ConnectorChoice(string Id, string Label)
 {
     public override string ToString() => Label;
 }
 
 public static class ConnectorChoices
 {
-    public static IReadOnlyList<ConnectorChoice> Build(ComponentCatalog catalog, string defaultLabel) =>
+    public static IReadOnlyList<ConnectorChoice> Build(ComponentCatalog catalog) =>
     [
-        new(null, defaultLabel),
         new("none", "None (bare)"),
         .. catalog.ConnectorFamilies.Select(f => new ConnectorChoice(f.Id, f.Name)),
     ];
