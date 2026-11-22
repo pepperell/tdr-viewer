@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
 using TdrSim.App.Editor;
 
 namespace TdrSim.App.Shell;
@@ -8,12 +10,48 @@ namespace TdrSim.App.Shell;
 public partial class MainWindow : Window
 {
     private readonly ShellViewModel _shell;
+    private bool _anchorRefreshQueued;
 
     public MainWindow()
     {
         InitializeComponent();
         _shell = new ShellViewModel();
         DataContext = _shell;
+
+        // Nodify only recomputes a connector's Anchor on a few triggers (its own
+        // drag-start, IsConnected flipping, its node moving/resizing), so a port can
+        // keep a stale anchor and its wire visibly misses the circle - classically on
+        // whichever end a new connection was dropped on. Re-anchor everything after
+        // each mutation, once layout has settled.
+        _shell.Editor.GraphChanged += (_, _) => ScheduleAnchorRefresh();
+        Loaded += (_, _) => ScheduleAnchorRefresh();
+    }
+
+    private void ScheduleAnchorRefresh()
+    {
+        if (_anchorRefreshQueued)
+            return;
+        _anchorRefreshQueued = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        {
+            _anchorRefreshQueued = false;
+            foreach (var connector in Descendants<Nodify.Connector>(EditorCanvas))
+                connector.UpdateAnchor();
+        });
+    }
+
+    private static IEnumerable<T> Descendants<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match)
+                yield return match;
+            foreach (var descendant in Descendants<T>(child))
+                yield return descendant;
+        }
     }
 
     /// <summary>Open a .tdrproj passed on the command line.</summary>
