@@ -86,9 +86,22 @@ public sealed partial class EditorViewModel : ObservableObject
             (c.Source == a && c.Target == b) || (c.Source == b && c.Target == a));
         if (exists)
             return;
-        Connections.Add(new ConnectionViewModel(this, a, b));
+        Connections.Add(NewConnection(a, b));
         RefreshPortStates();
         RaiseGraphChanged();
+    }
+
+    /// <summary>Wires carry no electrical direction, but the bezier leaves its source
+    /// rightward and enters its target from the left; putting the output-side port
+    /// (right edge of its node) first keeps the curve outside both node bodies no
+    /// matter which way the user dragged.</summary>
+    private ConnectionViewModel NewConnection(PortViewModel a, PortViewModel b)
+    {
+        bool aIsOutput = a.Owner.OutputPorts.Contains(a);
+        bool bIsOutput = b.Owner.OutputPorts.Contains(b);
+        return bIsOutput && !aIsOutput
+            ? new ConnectionViewModel(this, b, a)
+            : new ConnectionViewModel(this, a, b);
     }
 
     public void RemoveConnection(ConnectionViewModel connection)
@@ -177,7 +190,7 @@ public sealed partial class EditorViewModel : ObservableObject
             if (ports.TryGetValue((wire.FromNodeId, wire.FromPort), out var source)
                 && ports.TryGetValue((wire.ToNodeId, wire.ToPort), out var target))
             {
-                Connections.Add(new ConnectionViewModel(this, source, target));
+                Connections.Add(NewConnection(source, target));
             }
         }
 
