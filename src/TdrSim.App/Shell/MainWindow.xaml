@@ -295,8 +295,13 @@
 
                 <nodify:NodifyEditor.ConnectionTemplate>
                     <DataTemplate DataType="{x:Type editor:ConnectionViewModel}">
+                        <!-- OffsetMode None: the default (Static) shifts the endpoints
+                             along the connection's Direction regardless of geometry, so
+                             a wire dragged input-to-output detaches from both circles. -->
                         <nodify:LineConnection Source="{Binding Source.Anchor}"
                                                Target="{Binding Target.Anchor}"
+                                               SourceOffsetMode="None"
+                                               TargetOffsetMode="None"
                                                DisconnectCommand="{Binding RemoveCommand}" />
                     </DataTemplate>
                 </nodify:NodifyEditor.ConnectionTemplate>
