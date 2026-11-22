@@ -107,6 +107,29 @@ public sealed partial class InstrumentViewModel : ObservableObject
     public string NoiseDefaultNote =>
         $"{DefaultNote(SelectedPreset?.NoiseFloorMillivolts)} (preset floor) · 0 = off";
 
+    // ---- slider companions (log decades where the range spans them) ----
+
+    /// <summary>Log10(V) for the 0.05-5 V amplitude slider.</summary>
+    public double AmplitudeLog
+    {
+        get => SliderScale.ToLog(AmplitudeVolts, 0.3, 0.05, 5);
+        set => AmplitudeVolts = SliderScale.FromLog(value);
+    }
+
+    /// <summary>Log10(Ω) for the 10-1000 Ω source-impedance slider.</summary>
+    public double ImpedanceLog
+    {
+        get => SliderScale.ToLog(SourceImpedanceOhms, 50, 10, 1000);
+        set => SourceImpedanceOhms = SliderScale.FromLog(value);
+    }
+
+    /// <summary>Linear 0-20 mV; 0 is a meaningful position (noise off).</summary>
+    public double NoiseSlider
+    {
+        get => NoiseRms ?? 0;
+        set => NoiseRms = Math.Round(value, 1);
+    }
+
     private static string DefaultNote(double? value)
         => value is null ? "Default: —" : $"Default: {value:0.###}";
 
@@ -119,6 +142,9 @@ public sealed partial class InstrumentViewModel : ObservableObject
         OnPropertyChanged(nameof(AmplitudeVolts));
         OnPropertyChanged(nameof(SourceImpedanceOhms));
         OnPropertyChanged(nameof(NoiseRms));
+        OnPropertyChanged(nameof(AmplitudeLog));
+        OnPropertyChanged(nameof(ImpedanceLog));
+        OnPropertyChanged(nameof(NoiseSlider));
         OnPropertyChanged(nameof(SelectedPortConnector));
         OnPropertyChanged(nameof(RiseTimeDefaultNote));
         OnPropertyChanged(nameof(AmplitudeDefaultNote));
@@ -148,15 +174,18 @@ public sealed partial class InstrumentViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(AmplitudeVolts))]
+    [NotifyPropertyChangedFor(nameof(AmplitudeLog))]
     private double? _amplitudeVoltsOverride;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SourceImpedanceOhms))]
+    [NotifyPropertyChangedFor(nameof(ImpedanceLog))]
     private double? _sourceImpedanceOverrideOhms;
 
     /// <summary>Display-stage noise; null = preset floor, 0 = off.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NoiseRms))]
+    [NotifyPropertyChangedFor(nameof(NoiseSlider))]
     private double? _noiseRmsMillivolts;
 
     public IReadOnlyList<int> AveragingOptions { get; } = [1, 4, 16, 64, 256];

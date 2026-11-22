@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using TdrSim.App.Editor;
 using TdrSim.Core.Engine;
 
 namespace TdrSim.App.Plot;
@@ -18,16 +19,45 @@ public sealed record PulseProbe(string Label, string DocumentNodeId)
 public sealed partial class PulseViewModel : ObservableObject
 {
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RiseLog))]
     private double _riseTimePs = 200;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FallLog))]
     private double _fallTimePs = 200;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RateLog))]
     private double _rateMegahertz = 1;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DutySlider))]
     private double _dutyPercent = 50;
+
+    /// <summary>Log10 slider companions: edges 10 ps-5 ns, rate 10 kHz-1 GHz.</summary>
+    public double RiseLog
+    {
+        get => SliderScale.ToLog(RiseTimePs, 200, 10, 5000);
+        set => RiseTimePs = SliderScale.FromLog(value);
+    }
+
+    public double FallLog
+    {
+        get => SliderScale.ToLog(FallTimePs, 200, 10, 5000);
+        set => FallTimePs = SliderScale.FromLog(value);
+    }
+
+    public double RateLog
+    {
+        get => SliderScale.ToLog(RateMegahertz, 1, 0.01, 1000);
+        set => RateMegahertz = SliderScale.FromLog(value);
+    }
+
+    public double DutySlider
+    {
+        get => DutyPercent;
+        set => DutyPercent = Math.Round(value);
+    }
 
     /// <summary>View setting: how many repetitions of the period are tiled.</summary>
     [ObservableProperty]

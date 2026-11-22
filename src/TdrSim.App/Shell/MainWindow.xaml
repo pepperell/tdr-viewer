@@ -344,13 +344,33 @@
                                                 VerticalAlignment="Center" />
                                     </DockPanel>
                                     <TextBlock Text="Z0 (Ω)" Style="{StaticResource InspectorLabel}" />
-                                    <TextBox AutomationProperties.Name="Z0"
-                                             Text="{Binding Z0Ohms, TargetNullValue=''}" />
+                                    <DockPanel>
+                                        <TextBox DockPanel.Dock="Right"
+                                                 Width="64"
+                                                 AutomationProperties.Name="Z0"
+                                                 Text="{Binding Z0Ohms, TargetNullValue=''}" />
+                                        <Slider Minimum="1"
+                                                Maximum="3"
+                                                Value="{Binding Z0Log}"
+                                                Margin="0,0,6,0"
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.Name="Z0 slider" />
+                                    </DockPanel>
                                     <TextBlock Text="{Binding Z0DefaultNote}"
                                                Style="{StaticResource InspectorNote}" />
                                     <TextBlock Text="VF (0–1)" Style="{StaticResource InspectorLabel}" />
-                                    <TextBox AutomationProperties.Name="VF"
-                                             Text="{Binding Vf, TargetNullValue=''}" />
+                                    <DockPanel>
+                                        <TextBox DockPanel.Dock="Right"
+                                                 Width="64"
+                                                 AutomationProperties.Name="VF"
+                                                 Text="{Binding Vf, TargetNullValue=''}" />
+                                        <Slider Minimum="0.1"
+                                                Maximum="1"
+                                                Value="{Binding VfSlider}"
+                                                Margin="0,0,6,0"
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.Name="VF slider" />
+                                    </DockPanel>
                                     <TextBlock Text="{Binding VfDefaultNote}"
                                                Style="{StaticResource InspectorNote}" />
                                     <TextBlock Text="Connector, end A" Style="{StaticResource InspectorLabel}" />
@@ -378,15 +398,48 @@
                                               SelectedItem="{Binding LoadKind}" />
                                     <StackPanel Visibility="{Binding UsesR, Converter={StaticResource BoolToVis}}">
                                         <TextBlock Text="R (Ω)" Style="{StaticResource InspectorLabel}" />
-                                        <TextBox Text="{Binding ROhms, TargetNullValue=''}" />
+                                        <DockPanel>
+                                            <TextBox DockPanel.Dock="Right"
+                                                     Width="64"
+                                                     AutomationProperties.Name="R"
+                                                     Text="{Binding ROhms, TargetNullValue=''}" />
+                                            <Slider Minimum="-1"
+                                                    Maximum="5"
+                                                    Value="{Binding RLog}"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    AutomationProperties.Name="R slider" />
+                                        </DockPanel>
                                     </StackPanel>
                                     <StackPanel Visibility="{Binding UsesL, Converter={StaticResource BoolToVis}}">
                                         <TextBlock Text="L (nH)" Style="{StaticResource InspectorLabel}" />
-                                        <TextBox Text="{Binding LNanohenries, TargetNullValue=''}" />
+                                        <DockPanel>
+                                            <TextBox DockPanel.Dock="Right"
+                                                     Width="64"
+                                                     AutomationProperties.Name="L"
+                                                     Text="{Binding LNanohenries, TargetNullValue=''}" />
+                                            <Slider Minimum="0"
+                                                    Maximum="6"
+                                                    Value="{Binding LLog}"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    AutomationProperties.Name="L slider" />
+                                        </DockPanel>
                                     </StackPanel>
                                     <StackPanel Visibility="{Binding UsesC, Converter={StaticResource BoolToVis}}">
                                         <TextBlock Text="C (pF)" Style="{StaticResource InspectorLabel}" />
-                                        <TextBox Text="{Binding CPicofarads, TargetNullValue=''}" />
+                                        <DockPanel>
+                                            <TextBox DockPanel.Dock="Right"
+                                                     Width="64"
+                                                     AutomationProperties.Name="C"
+                                                     Text="{Binding CPicofarads, TargetNullValue=''}" />
+                                            <Slider Minimum="-1"
+                                                    Maximum="6"
+                                                    Value="{Binding CLog}"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    AutomationProperties.Name="C slider" />
+                                        </DockPanel>
                                     </StackPanel>
                                 </StackPanel>
                             </DataTemplate>
@@ -418,22 +471,77 @@
                                                   SelectedItem="{Binding SelectedBasePreset}"
                                                   DisplayMemberPath="Name" />
                                         <TextBlock Text="Section length (m)" Style="{StaticResource InspectorLabel}" />
-                                        <TextBox Text="{Binding LengthM, TargetNullValue=''}" />
-                                        <TextBlock Text="Z0 scale (0–1)" Style="{StaticResource InspectorLabel}" />
-                                        <TextBox Text="{Binding Z0Scale, TargetNullValue=''}" />
+                                        <DockPanel>
+                                            <TextBox DockPanel.Dock="Right"
+                                                     Width="64"
+                                                     AutomationProperties.Name="Section length"
+                                                     Text="{Binding LengthM, TargetNullValue=''}" />
+                                            <Slider Minimum="-2"
+                                                    Maximum="3"
+                                                    Value="{Binding LengthLog}"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    AutomationProperties.Name="Section length slider" />
+                                        </DockPanel>
+                                        <TextBlock Text="Z0 scale" Style="{StaticResource InspectorLabel}" />
+                                        <DockPanel>
+                                            <TextBox DockPanel.Dock="Right"
+                                                     Width="64"
+                                                     AutomationProperties.Name="Z0 scale"
+                                                     Text="{Binding Z0Scale, TargetNullValue=''}" />
+                                            <Slider Minimum="0.2"
+                                                    Maximum="1.5"
+                                                    Value="{Binding Z0ScaleSlider}"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    AutomationProperties.Name="Z0 scale slider" />
+                                        </DockPanel>
                                         <TextBlock Text="Extra dielectric loss (dB/100 m @ 100 MHz)"
                                                    Style="{StaticResource InspectorLabel}" />
-                                        <TextBox Text="{Binding ExtraLossDbPer100m, TargetNullValue=''}" />
+                                        <DockPanel>
+                                            <TextBox DockPanel.Dock="Right"
+                                                     Width="64"
+                                                     AutomationProperties.Name="Extra loss"
+                                                     Text="{Binding ExtraLossDbPer100m, TargetNullValue=''}" />
+                                            <Slider Minimum="0"
+                                                    Maximum="30"
+                                                    Value="{Binding ExtraLossSlider}"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    AutomationProperties.Name="Extra loss slider" />
+                                        </DockPanel>
                                         <TextBlock Text="Z0 and velocity both scale (dielectric change at constant L)."
                                                    Style="{StaticResource InspectorNote}" />
                                     </StackPanel>
                                     <StackPanel Visibility="{Binding IsBridge, Converter={StaticResource BoolToVis}}">
                                         <TextBlock Text="Bridge resistance (Ω)" Style="{StaticResource InspectorLabel}" />
-                                        <TextBox Text="{Binding ROhms, TargetNullValue=''}" />
+                                        <DockPanel>
+                                            <TextBox DockPanel.Dock="Right"
+                                                     Width="64"
+                                                     AutomationProperties.Name="Bridge resistance"
+                                                     Text="{Binding ROhms, TargetNullValue=''}" />
+                                            <Slider Minimum="-1"
+                                                    Maximum="5"
+                                                    Value="{Binding RLog}"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    AutomationProperties.Name="Bridge resistance slider" />
+                                        </DockPanel>
                                     </StackPanel>
                                     <StackPanel Visibility="{Binding IsSeries, Converter={StaticResource BoolToVis}}">
                                         <TextBlock Text="Series resistance (Ω)" Style="{StaticResource InspectorLabel}" />
-                                        <TextBox Text="{Binding ROhms, TargetNullValue=''}" />
+                                        <DockPanel>
+                                            <TextBox DockPanel.Dock="Right"
+                                                     Width="64"
+                                                     AutomationProperties.Name="Series resistance"
+                                                     Text="{Binding ROhms, TargetNullValue=''}" />
+                                            <Slider Minimum="-1"
+                                                    Maximum="5"
+                                                    Value="{Binding RLog}"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    AutomationProperties.Name="Series resistance slider" />
+                                        </DockPanel>
                                     </StackPanel>
                                 </StackPanel>
                             </DataTemplate>
@@ -450,18 +558,48 @@
                                               SelectedItem="{Binding SelectedPreset}"
                                               DisplayMemberPath="Name" />
                                     <TextBlock Text="Rise time (ps)" Style="{StaticResource InspectorLabel}" />
-                                    <TextBox AutomationProperties.Name="Rise time"
-                                             Text="{Binding RiseTimePs, TargetNullValue=''}" />
+                                    <DockPanel>
+                                        <TextBox DockPanel.Dock="Right"
+                                                 Width="64"
+                                                 AutomationProperties.Name="Rise time"
+                                                 Text="{Binding RiseTimePs, TargetNullValue=''}" />
+                                        <Slider Minimum="1"
+                                                Maximum="3.69897"
+                                                Value="{Binding RiseTimeLog}"
+                                                Margin="0,0,6,0"
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.Name="Rise time slider" />
+                                    </DockPanel>
                                     <TextBlock Text="{Binding RiseTimeDefaultNote}"
                                                Style="{StaticResource InspectorNote}" />
                                     <TextBlock Text="Amplitude (V)" Style="{StaticResource InspectorLabel}" />
-                                    <TextBox AutomationProperties.Name="Amplitude"
-                                             Text="{Binding AmplitudeVolts, TargetNullValue=''}" />
+                                    <DockPanel>
+                                        <TextBox DockPanel.Dock="Right"
+                                                 Width="64"
+                                                 AutomationProperties.Name="Amplitude"
+                                                 Text="{Binding AmplitudeVolts, TargetNullValue=''}" />
+                                        <Slider Minimum="-1.30103"
+                                                Maximum="0.69897"
+                                                Value="{Binding AmplitudeLog}"
+                                                Margin="0,0,6,0"
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.Name="Amplitude slider" />
+                                    </DockPanel>
                                     <TextBlock Text="{Binding AmplitudeDefaultNote}"
                                                Style="{StaticResource InspectorNote}" />
                                     <TextBlock Text="Source impedance (Ω)" Style="{StaticResource InspectorLabel}" />
-                                    <TextBox AutomationProperties.Name="Source impedance"
-                                             Text="{Binding SourceImpedanceOhms, TargetNullValue=''}" />
+                                    <DockPanel>
+                                        <TextBox DockPanel.Dock="Right"
+                                                 Width="64"
+                                                 AutomationProperties.Name="Source impedance"
+                                                 Text="{Binding SourceImpedanceOhms, TargetNullValue=''}" />
+                                        <Slider Minimum="1"
+                                                Maximum="3"
+                                                Value="{Binding ImpedanceLog}"
+                                                Margin="0,0,6,0"
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.Name="Source impedance slider" />
+                                    </DockPanel>
                                     <TextBlock Text="{Binding ImpedanceDefaultNote}"
                                                Style="{StaticResource InspectorNote}" />
                                     <TextBlock Text="Panel connector" Style="{StaticResource InspectorLabel}" />
@@ -472,8 +610,18 @@
                                     <TextBlock Text="{Binding PortConnectorDefaultNote}"
                                                Style="{StaticResource InspectorNote}" />
                                     <TextBlock Text="Noise RMS (mV)" Style="{StaticResource InspectorLabel}" />
-                                    <TextBox AutomationProperties.Name="Noise RMS"
-                                             Text="{Binding NoiseRms, TargetNullValue=''}" />
+                                    <DockPanel>
+                                        <TextBox DockPanel.Dock="Right"
+                                                 Width="64"
+                                                 AutomationProperties.Name="Noise RMS"
+                                                 Text="{Binding NoiseRms, TargetNullValue=''}" />
+                                        <Slider Minimum="0"
+                                                Maximum="20"
+                                                Value="{Binding NoiseSlider}"
+                                                Margin="0,0,6,0"
+                                                VerticalAlignment="Center"
+                                                AutomationProperties.Name="Noise RMS slider" />
+                                    </DockPanel>
                                     <TextBlock Text="{Binding NoiseDefaultNote}"
                                                Style="{StaticResource InspectorNote}" />
                                     <TextBlock Text="Averaging (sweeps)" Style="{StaticResource InspectorLabel}" />

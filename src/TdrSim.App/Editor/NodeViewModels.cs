@@ -100,6 +100,8 @@ public sealed partial class CableNodeViewModel : NodeViewModelBase
             OnPropertyChanged(nameof(Title));
             OnPropertyChanged(nameof(Z0Ohms));
             OnPropertyChanged(nameof(Vf));
+            OnPropertyChanged(nameof(Z0Log));
+            OnPropertyChanged(nameof(VfSlider));
             OnPropertyChanged(nameof(SelectedConnectorA));
             OnPropertyChanged(nameof(SelectedConnectorB));
             OnPropertyChanged(nameof(Z0DefaultNote));
@@ -127,6 +129,20 @@ public sealed partial class CableNodeViewModel : NodeViewModelBase
     public string Z0DefaultNote => DefaultNote(SelectedPreset?.Z0Ohms);
 
     public string VfDefaultNote => DefaultNote(SelectedPreset?.VelocityFactor);
+
+    /// <summary>Log10(Ω) for the 10-1000 Ω slider.</summary>
+    public double Z0Log
+    {
+        get => SliderScale.ToLog(Z0Ohms, 50, 10, 1000);
+        set => Z0Ohms = SliderScale.FromLog(value);
+    }
+
+    /// <summary>Linear 0.1-1 slider.</summary>
+    public double VfSlider
+    {
+        get => Vf ?? 0.66;
+        set => Vf = Math.Round(value, 3);
+    }
 
     public ConnectorChoice? SelectedConnectorA
     {
@@ -180,10 +196,12 @@ public sealed partial class CableNodeViewModel : NodeViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Z0Ohms))]
+    [NotifyPropertyChangedFor(nameof(Z0Log))]
     private double? _z0OverrideOhms;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Vf))]
+    [NotifyPropertyChangedFor(nameof(VfSlider))]
     private double? _vfOverride;
 
     /// <summary>Log10 companion for the 0.1-1000 m inspector slider.</summary>
@@ -278,15 +296,37 @@ public sealed partial class LoadNodeViewModel : NodeViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Title))]
+    [NotifyPropertyChangedFor(nameof(RLog))]
     private double? _rOhms;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Title))]
+    [NotifyPropertyChangedFor(nameof(LLog))]
     private double? _lNanohenries;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Title))]
+    [NotifyPropertyChangedFor(nameof(CLog))]
     private double? _cPicofarads;
+
+    /// <summary>Log10 sliders: R 0.1 Ω-100 kΩ, L 1 nH-1 mH, C 0.1 pF-1 µF.</summary>
+    public double RLog
+    {
+        get => SliderScale.ToLog(ROhms, 50, 0.1, 100_000);
+        set => ROhms = SliderScale.FromLog(value);
+    }
+
+    public double LLog
+    {
+        get => SliderScale.ToLog(LNanohenries, 100, 1, 1_000_000);
+        set => LNanohenries = SliderScale.FromLog(value);
+    }
+
+    public double CLog
+    {
+        get => SliderScale.ToLog(CPicofarads, 10, 0.1, 1_000_000);
+        set => CPicofarads = SliderScale.FromLog(value);
+    }
 
     public bool UsesR => LoadKind is LoadKind.Resistor or LoadKind.SeriesRlc or LoadKind.ParallelRlc;
 
@@ -424,17 +464,49 @@ public sealed partial class FaultNodeViewModel : NodeViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Title))]
+    [NotifyPropertyChangedFor(nameof(LengthLog))]
     private double? _lengthM;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Z0ScaleSlider))]
     private double? _z0Scale;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ExtraLossSlider))]
     private double? _extraLossDbPer100m;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Title))]
+    [NotifyPropertyChangedFor(nameof(RLog))]
     private double? _rOhms;
+
+    /// <summary>Log10 slider, 1 cm to 1 km of fault section.</summary>
+    public double LengthLog
+    {
+        get => SliderScale.ToLog(LengthM, 1, 0.01, 1000);
+        set => LengthM = SliderScale.FromLog(value);
+    }
+
+    /// <summary>Linear 0.2-1.5 (above ~1.5 the derived VF leaves (0, 1]).</summary>
+    public double Z0ScaleSlider
+    {
+        get => Z0Scale ?? 1;
+        set => Z0Scale = Math.Round(value, 2);
+    }
+
+    /// <summary>Linear 0-30 dB/100 m at 100 MHz.</summary>
+    public double ExtraLossSlider
+    {
+        get => ExtraLossDbPer100m ?? 0;
+        set => ExtraLossDbPer100m = Math.Round(value, 1);
+    }
+
+    /// <summary>Log10 slider, 0.1 Ω-100 kΩ, for bridge and series resistance.</summary>
+    public double RLog
+    {
+        get => SliderScale.ToLog(ROhms, 100, 0.1, 100_000);
+        set => ROhms = SliderScale.FromLog(value);
+    }
 
     public override string Title => FaultKind switch
     {

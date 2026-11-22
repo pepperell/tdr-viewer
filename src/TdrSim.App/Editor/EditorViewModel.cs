@@ -239,12 +239,21 @@ public sealed partial class EditorViewModel : ObservableObject
     private void OnNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         // Selection and display-only mirror properties don't change the document.
+        // Slider companions (Z0Log, RLog, ...) mirror the stored fields, which raise
+        // their own notifications - skipping them here avoids duplicate recompiles.
         if (e.PropertyName is nameof(NodeViewModelBase.IsSelected)
             or nameof(CableNodeViewModel.Title)
             or nameof(CableNodeViewModel.LengthLog)
+            or nameof(CableNodeViewModel.Z0Log)
+            or nameof(CableNodeViewModel.VfSlider)
             or nameof(CableNodeViewModel.Z0DefaultNote)
             or nameof(CableNodeViewModel.VfDefaultNote)
             or nameof(CableNodeViewModel.ConnectorDefaultNote)
+            or nameof(LoadNodeViewModel.RLog)
+            or nameof(LoadNodeViewModel.LLog)
+            or nameof(LoadNodeViewModel.CLog)
+            or nameof(FaultNodeViewModel.Z0ScaleSlider)
+            or nameof(FaultNodeViewModel.ExtraLossSlider)
             or nameof(LoadNodeViewModel.UsesR)
             or nameof(LoadNodeViewModel.UsesL)
             or nameof(LoadNodeViewModel.UsesC))

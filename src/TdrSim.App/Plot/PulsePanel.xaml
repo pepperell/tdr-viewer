@@ -33,15 +33,40 @@
                               DisplayMemberPath="Label"
                               AutomationProperties.Name="Pulse probe" />
                     <TextBlock Text="rise (ps):" Style="{StaticResource BarLabel}" />
-                    <TextBox Style="{StaticResource BarBox}" Text="{Binding RiseTimePs}" />
+                    <Slider Width="78"
+                            Minimum="1"
+                            Maximum="3.69897"
+                            Value="{Binding RiseLog}"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Rise slider" />
+                    <TextBox Style="{StaticResource BarBox}" Text="{Binding RiseTimePs}" Margin="3,0,0,0" />
                     <TextBlock Text="fall (ps):" Style="{StaticResource BarLabel}" />
-                    <TextBox Style="{StaticResource BarBox}" Text="{Binding FallTimePs}" />
+                    <Slider Width="78"
+                            Minimum="1"
+                            Maximum="3.69897"
+                            Value="{Binding FallLog}"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Fall slider" />
+                    <TextBox Style="{StaticResource BarBox}" Text="{Binding FallTimePs}" Margin="3,0,0,0" />
                     <TextBlock Text="rate (MHz):" Style="{StaticResource BarLabel}" />
+                    <Slider Width="78"
+                            Minimum="-2"
+                            Maximum="3"
+                            Value="{Binding RateLog}"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Rate slider" />
                     <TextBox Style="{StaticResource BarBox}"
                              AutomationProperties.Name="Pulse rate"
-                             Text="{Binding RateMegahertz}" />
+                             Text="{Binding RateMegahertz}"
+                             Margin="3,0,0,0" />
                     <TextBlock Text="duty (%):" Style="{StaticResource BarLabel}" />
-                    <TextBox Style="{StaticResource BarBox}" Width="38" Text="{Binding DutyPercent}" />
+                    <Slider Width="64"
+                            Minimum="1"
+                            Maximum="99"
+                            Value="{Binding DutySlider}"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Duty slider" />
+                    <TextBox Style="{StaticResource BarBox}" Width="34" Text="{Binding DutyPercent}" Margin="3,0,0,0" />
                     <TextBlock Text="pulses:" Style="{StaticResource BarLabel}" />
                     <ComboBox Width="46"
                               VerticalAlignment="Center"
