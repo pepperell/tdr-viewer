@@ -7,9 +7,8 @@ instrument noise floors, always-fit plots). Workflow for big items stays
 
 ## Top priorities
 
-- [ ] **Git init + first commit.** ~225 tests and five milestones with zero version
-      control; the single biggest risk to the project. (Deliberately deferred until
-      asked — this entry is the standing reminder.)
+- [x] **Git init + first commit.** Done 2026-11-22: pushed to
+      https://github.com/pepperell/tdr-viewer (main).
 - [ ] **M6 — teaching views** (planned in PLAN §6; needs a plans/M6.md):
   - [ ] Bounce-diagram panel for chain topologies, each ray labeled with its ρ/τ
         product (exact for lossless; annotated approximate otherwise).
