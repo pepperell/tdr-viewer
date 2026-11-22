@@ -1,0 +1,642 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "rg58-belden-9201",
+      "section": "50 Ω coax",
+      "name": "RG-58 (Belden 9201)",
+      "category": "coax",
+      "z0Ohms": 52.0,
+      "velocityFactor": 0.66,
+      "capacitancePfPerM": 93.5,
+      "rdcCenterOhmsPerKm": 33.8,
+      "rdcShieldOhmsPerKm": 23.0,
+      "dielectricConstant": 2.3,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 1, "db": 0.98 },
+          { "mhz": 10, "db": 3.61 },
+          { "mhz": 50, "db": 8.2 },
+          { "mhz": 100, "db": 12.5 },
+          { "mhz": 200, "db": 18.4 },
+          { "mhz": 400, "db": 27.6 },
+          { "mhz": 700, "db": 38.4 },
+          { "mhz": 900, "db": 45.0 },
+          { "mhz": 1000, "db": 47.6 }
+        ]
+      },
+      "source": "Belden 9201 datasheet (note: genuinely 52 ohm nominal, not 50)"
+    },
+    {
+      "id": "rg6-belden-1694a",
+      "section": "75 Ω coax",
+      "name": "RG-6 (Belden 1694A)",
+      "category": "coax",
+      "z0Ohms": 75.0,
+      "velocityFactor": 0.82,
+      "capacitancePfPerM": 53.1,
+      "rdcCenterOhmsPerKm": 21.0,
+      "rdcShieldOhmsPerKm": 12.0,
+      "dielectricConstant": 1.49,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 1, "db": 0.79 },
+          { "mhz": 10, "db": 2.33 },
+          { "mhz": 25, "db": 3.54 },
+          { "mhz": 100, "db": 6.4 },
+          { "mhz": 180, "db": 8.43 },
+          { "mhz": 360, "db": 12.1 },
+          { "mhz": 720, "db": 17.4 },
+          { "mhz": 1000, "db": 20.7 },
+          { "mhz": 1500, "db": 25.6 },
+          { "mhz": 2000, "db": 30.2 },
+          { "mhz": 3000, "db": 37.7 },
+          { "mhz": 4500, "db": 47.6 },
+          { "mhz": 6000, "db": 58.1 }
+        ]
+      },
+      "source": "Belden 1694A datasheet"
+    },
+    {
+      "id": "rg174-belden-8216",
+      "section": "50 Ω coax",
+      "name": "RG-174 (Belden 8216)",
+      "category": "coax",
+      "z0Ohms": 50.0,
+      "velocityFactor": 0.66,
+      "capacitancePfPerM": 101.0,
+      "rdcCenterOhmsPerKm": 318.0,
+      "rdcShieldOhmsPerKm": 35.1,
+      "dielectricConstant": 2.3,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 1, "db": 6.2 },
+          { "mhz": 10, "db": 10.8 },
+          { "mhz": 50, "db": 19.0 },
+          { "mhz": 100, "db": 27.6 },
+          { "mhz": 200, "db": 41.0 },
+          { "mhz": 400, "db": 62.3 },
+          { "mhz": 700, "db": 88.6 },
+          { "mhz": 900, "db": 101.7 },
+          { "mhz": 1000, "db": 111.5 }
+        ]
+      },
+      "source": "Belden 8216 datasheet (center conductor is copper-clad steel; high DCR is correct)"
+    },
+    {
+      "id": "rg213-belden-8267",
+      "section": "50 Ω coax",
+      "name": "RG-213 (Belden 8267)",
+      "category": "coax",
+      "z0Ohms": 50.0,
+      "velocityFactor": 0.66,
+      "capacitancePfPerM": 101.0,
+      "rdcCenterOhmsPerKm": 5.6,
+      "rdcShieldOhmsPerKm": 3.9,
+      "dielectricConstant": 2.3,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 1, "db": 0.56 },
+          { "mhz": 10, "db": 1.8 },
+          { "mhz": 50, "db": 4.27 },
+          { "mhz": 100, "db": 6.23 },
+          { "mhz": 200, "db": 8.86 },
+          { "mhz": 400, "db": 13.5 },
+          { "mhz": 700, "db": 21.3 },
+          { "mhz": 900, "db": 24.9 },
+          { "mhz": 1000, "db": 26.2 },
+          { "mhz": 4000, "db": 70.5 }
+        ]
+      },
+      "source": "Belden 8267 datasheet"
+    },
+    {
+      "id": "lmr-400",
+      "section": "50 Ω coax",
+      "name": "LMR-400 (Times Microwave)",
+      "category": "coax",
+      "z0Ohms": 50.0,
+      "velocityFactor": 0.85,
+      "capacitancePfPerM": 78.4,
+      "rdcCenterOhmsPerKm": 4.6,
+      "rdcShieldOhmsPerKm": 5.4,
+      "dielectricConstant": 1.38,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 30, "db": 2.2 },
+          { "mhz": 50, "db": 2.9 },
+          { "mhz": 150, "db": 5.0 },
+          { "mhz": 220, "db": 6.1 },
+          { "mhz": 450, "db": 8.9 },
+          { "mhz": 900, "db": 12.8 },
+          { "mhz": 1500, "db": 16.8 },
+          { "mhz": 2000, "db": 19.6 },
+          { "mhz": 2500, "db": 22.2 },
+          { "mhz": 5800, "db": 35.5 }
+        ]
+      },
+      "source": "Times Microwave LMR-400 datasheet (closed form: 0.122290*sqrt(f)+0.000260*f dB/100ft)"
+    },
+    {
+      "id": "cat5e-belden-1583a",
+      "section": "Balanced pairs",
+      "name": "Cat5e pair (Belden 1583A)",
+      "category": "twisted-pair",
+      "z0Ohms": 100.0,
+      "velocityFactor": 0.7,
+      "capacitancePfPerM": 46.0,
+      "rdcCenterOhmsPerKm": 93.8,
+      "rdcShieldOhmsPerKm": 93.8,
+      "insertionLossCoefficients": { "k1": 1.967, "k2": 0.023, "k3": 0.05 },
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 1, "db": 2.0 },
+          { "mhz": 10, "db": 6.5 },
+          { "mhz": 100, "db": 22.0 },
+          { "mhz": 200, "db": 32.4 }
+        ]
+      },
+      "source": "TIA/EIA-568-B.2 Table 4 coefficients; Belden 1583A datasheet typicals (NVP 70%)"
+    },
+    {
+      "id": "cat6-belden-2413",
+      "section": "Balanced pairs",
+      "name": "Cat6 pair (Belden 2413)",
+      "category": "twisted-pair",
+      "z0Ohms": 100.0,
+      "velocityFactor": 0.72,
+      "capacitancePfPerM": 44.0,
+      "rdcCenterOhmsPerKm": 78.0,
+      "rdcShieldOhmsPerKm": 78.0,
+      "insertionLossCoefficients": { "k1": 1.808, "k2": 0.017, "k3": 0.2 },
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 1, "db": 2.0 },
+          { "mhz": 10, "db": 5.9 },
+          { "mhz": 100, "db": 19.3 },
+          { "mhz": 250, "db": 31.8 },
+          { "mhz": 500, "db": 47.1 }
+        ]
+      },
+      "source": "TIA/EIA-568-B.2-1 coefficients; Belden 2413 datasheet typicals (NVP 72%)"
+    },
+    {
+      "id": "rg8-belden-8237",
+      "section": "50 Ω coax",
+      "name": "RG-8/U (Belden 8237)",
+      "category": "coax",
+      "z0Ohms": 52.0,
+      "velocityFactor": 0.66,
+      "capacitancePfPerM": 96.8,
+      "rdcCenterOhmsPerKm": 6.9,
+      "rdcShieldOhmsPerKm": 4.6,
+      "dielectricConstant": 2.3,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 1, "db": 0.66 },
+          { "mhz": 10, "db": 1.97 },
+          { "mhz": 50, "db": 4.27 },
+          { "mhz": 100, "db": 6.23 },
+          { "mhz": 200, "db": 9.19 },
+          { "mhz": 400, "db": 13.8 },
+          { "mhz": 700, "db": 19.4 },
+          { "mhz": 1000, "db": 24.3 }
+        ]
+      },
+      "source": "Belden 8237 datasheet (13 AWG center; the classic fat amateur-radio coax)"
+    },
+    {
+      "id": "lmr-240",
+      "section": "50 Ω coax",
+      "name": "LMR-240 (Times Microwave)",
+      "category": "coax",
+      "z0Ohms": 50.0,
+      "velocityFactor": 0.84,
+      "capacitancePfPerM": 79.4,
+      "rdcCenterOhmsPerKm": 11.2,
+      "rdcShieldOhmsPerKm": 7.2,
+      "dielectricConstant": 1.42,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 30, "db": 4.39 },
+          { "mhz": 50, "db": 5.69 },
+          { "mhz": 150, "db": 9.95 },
+          { "mhz": 450, "db": 17.5 },
+          { "mhz": 900, "db": 25.2 },
+          { "mhz": 1500, "db": 33.0 },
+          { "mhz": 2500, "db": 43.4 }
+        ]
+      },
+      "source": "Times Microwave LMR-240 datasheet (closed form: 0.242080*sqrt(f)+0.000450*f dB/100ft)"
+    },
+    {
+      "id": "lmr-600",
+      "section": "50 Ω coax",
+      "name": "LMR-600 (Times Microwave)",
+      "category": "coax",
+      "z0Ohms": 50.0,
+      "velocityFactor": 0.87,
+      "capacitancePfPerM": 76.6,
+      "rdcCenterOhmsPerKm": 1.1,
+      "rdcShieldOhmsPerKm": 1.8,
+      "dielectricConstant": 1.32,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 30, "db": 1.38 },
+          { "mhz": 50, "db": 1.8 },
+          { "mhz": 150, "db": 3.16 },
+          { "mhz": 450, "db": 5.62 },
+          { "mhz": 900, "db": 8.14 },
+          { "mhz": 1500, "db": 10.8 },
+          { "mhz": 2500, "db": 14.3 },
+          { "mhz": 5800, "db": 23.3 }
+        ]
+      },
+      "source": "Times Microwave LMR-600 datasheet (closed form: 0.075755*sqrt(f)+0.000232*f dB/100ft)"
+    },
+    {
+      "id": "rg142",
+      "section": "50 Ω coax",
+      "name": "RG-142B/U (PTFE, double braid)",
+      "category": "coax",
+      "z0Ohms": 50.0,
+      "velocityFactor": 0.695,
+      "capacitancePfPerM": 96.1,
+      "rdcCenterOhmsPerKm": 55.0,
+      "rdcShieldOhmsPerKm": 5.9,
+      "dielectricConstant": 2.07,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 10, "db": 4.1 },
+          { "mhz": 100, "db": 12.8 },
+          { "mhz": 400, "db": 26.2 },
+          { "mhz": 1000, "db": 44.3 },
+          { "mhz": 3000, "db": 85.3 }
+        ]
+      },
+      "source": "representative RG-142B/U per MIL-DTL-17 (silver-plated copper-clad steel center)"
+    },
+    {
+      "id": "rg316",
+      "section": "50 Ω coax",
+      "name": "RG-316/U (miniature PTFE)",
+      "category": "coax",
+      "z0Ohms": 50.0,
+      "velocityFactor": 0.695,
+      "capacitancePfPerM": 95.1,
+      "rdcCenterOhmsPerKm": 320.0,
+      "rdcShieldOhmsPerKm": 15.1,
+      "dielectricConstant": 2.07,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 10, "db": 6.6 },
+          { "mhz": 100, "db": 20.0 },
+          { "mhz": 400, "db": 41.0 },
+          { "mhz": 1000, "db": 68.6 },
+          { "mhz": 3000, "db": 131.0 }
+        ]
+      },
+      "source": "representative RG-316/U per MIL-DTL-17 (26 AWG SCCS center; high DCR is correct)"
+    },
+    {
+      "id": "rg178",
+      "section": "50 Ω coax",
+      "name": "RG-178B/U (0.071 in PTFE)",
+      "category": "coax",
+      "z0Ohms": 50.0,
+      "velocityFactor": 0.695,
+      "capacitancePfPerM": 95.1,
+      "rdcCenterOhmsPerKm": 700.0,
+      "rdcShieldOhmsPerKm": 26.2,
+      "dielectricConstant": 2.07,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 10, "db": 10.8 },
+          { "mhz": 100, "db": 34.4 },
+          { "mhz": 400, "db": 70.0 },
+          { "mhz": 1000, "db": 138.0 }
+        ]
+      },
+      "source": "representative RG-178B/U (30 AWG SCCS center - tiny and very lossy, great for loss demos)"
+    },
+    {
+      "id": "rg59-belden-8241",
+      "section": "75 Ω coax",
+      "name": "RG-59 (Belden 8241)",
+      "category": "coax",
+      "z0Ohms": 75.0,
+      "velocityFactor": 0.66,
+      "capacitancePfPerM": 67.3,
+      "rdcCenterOhmsPerKm": 145.0,
+      "rdcShieldOhmsPerKm": 8.9,
+      "dielectricConstant": 2.3,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 1, "db": 1.97 },
+          { "mhz": 10, "db": 3.61 },
+          { "mhz": 50, "db": 7.87 },
+          { "mhz": 100, "db": 11.2 },
+          { "mhz": 200, "db": 16.1 },
+          { "mhz": 400, "db": 23.0 },
+          { "mhz": 700, "db": 31.8 },
+          { "mhz": 1000, "db": 39.4 }
+        ]
+      },
+      "source": "Belden 8241 datasheet (23 AWG CCS center; legacy analog video)"
+    },
+    {
+      "id": "rg11-foam",
+      "section": "75 Ω coax",
+      "name": "RG-11 type (14 AWG, foam PE)",
+      "category": "coax",
+      "z0Ohms": 75.0,
+      "velocityFactor": 0.84,
+      "capacitancePfPerM": 52.9,
+      "rdcCenterOhmsPerKm": 8.4,
+      "rdcShieldOhmsPerKm": 5.2,
+      "dielectricConstant": 1.42,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 1, "db": 0.36 },
+          { "mhz": 10, "db": 1.15 },
+          { "mhz": 50, "db": 2.62 },
+          { "mhz": 100, "db": 3.94 },
+          { "mhz": 200, "db": 5.58 },
+          { "mhz": 400, "db": 8.2 },
+          { "mhz": 700, "db": 11.2 },
+          { "mhz": 1000, "db": 13.8 }
+        ]
+      },
+      "source": "representative RG-11 trunk/drop cable (foam PE)"
+    },
+    {
+      "id": "rg179",
+      "section": "75 Ω coax",
+      "name": "RG-179B/U (75 ohm miniature PTFE)",
+      "category": "coax",
+      "z0Ohms": 75.0,
+      "velocityFactor": 0.695,
+      "capacitancePfPerM": 64.0,
+      "rdcCenterOhmsPerKm": 700.0,
+      "rdcShieldOhmsPerKm": 27.9,
+      "dielectricConstant": 2.07,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 10, "db": 9.2 },
+          { "mhz": 100, "db": 24.6 },
+          { "mhz": 400, "db": 52.5 },
+          { "mhz": 1000, "db": 85.3 }
+        ]
+      },
+      "source": "representative RG-179B/U per MIL-DTL-17 (30 AWG SCCS center)"
+    },
+    {
+      "id": "rg62-au",
+      "section": "Other coax",
+      "name": "RG-62 A/U (93 ohm air-spaced)",
+      "category": "coax",
+      "z0Ohms": 93.0,
+      "velocityFactor": 0.84,
+      "capacitancePfPerM": 44.3,
+      "rdcCenterOhmsPerKm": 135.0,
+      "rdcShieldOhmsPerKm": 8.9,
+      "dielectricConstant": 1.42,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 1, "db": 0.82 },
+          { "mhz": 10, "db": 2.79 },
+          { "mhz": 50, "db": 6.23 },
+          { "mhz": 100, "db": 8.86 },
+          { "mhz": 200, "db": 12.5 },
+          { "mhz": 400, "db": 18.4 },
+          { "mhz": 700, "db": 25.6 },
+          { "mhz": 1000, "db": 30.8 }
+        ]
+      },
+      "source": "representative RG-62 A/U (ARCnet / IBM 3270 legacy; 22 AWG CCS center)"
+    },
+    {
+      "id": "cat3-tia",
+      "section": "Balanced pairs",
+      "name": "Cat3 pair (voice grade)",
+      "category": "twisted-pair",
+      "z0Ohms": 100.0,
+      "velocityFactor": 0.6,
+      "capacitancePfPerM": 55.6,
+      "rdcCenterOhmsPerKm": 93.8,
+      "rdcShieldOhmsPerKm": 93.8,
+      "insertionLossCoefficients": { "k1": 2.32, "k2": 0.238, "k3": 0.0 },
+      "source": "TIA/EIA-568-B.2 category 3 coefficients (specified to 16 MHz)"
+    },
+    {
+      "id": "cat6a-tia",
+      "section": "Balanced pairs",
+      "name": "Cat6A pair",
+      "category": "twisted-pair",
+      "z0Ohms": 100.0,
+      "velocityFactor": 0.72,
+      "capacitancePfPerM": 46.3,
+      "rdcCenterOhmsPerKm": 75.0,
+      "rdcShieldOhmsPerKm": 75.0,
+      "insertionLossCoefficients": { "k1": 1.82, "k2": 0.0169, "k3": 0.25 },
+      "source": "TIA-568-C.2 category 6A coefficients (23 AWG)"
+    },
+    {
+      "id": "rs485-belden-9841",
+      "section": "Balanced pairs",
+      "name": "RS-485 pair (Belden 9841)",
+      "category": "twisted-pair",
+      "z0Ohms": 120.0,
+      "velocityFactor": 0.66,
+      "capacitancePfPerM": 42.0,
+      "rdcCenterOhmsPerKm": 84.0,
+      "rdcShieldOhmsPerKm": 84.0,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 1, "db": 1.5 },
+          { "mhz": 5, "db": 3.1 },
+          { "mhz": 10, "db": 4.3 },
+          { "mhz": 25, "db": 6.9 },
+          { "mhz": 50, "db": 10.2 },
+          { "mhz": 100, "db": 15.4 }
+        ]
+      },
+      "source": "Belden 9841 datasheet typicals (24 AWG, 120 ohm industrial bus)"
+    },
+    {
+      "id": "twinlead-300",
+      "section": "Balanced pairs",
+      "name": "300 ohm twin-lead (FM/TV)",
+      "category": "twisted-pair",
+      "z0Ohms": 300.0,
+      "velocityFactor": 0.8,
+      "capacitancePfPerM": 13.9,
+      "rdcCenterOhmsPerKm": 45.0,
+      "rdcShieldOhmsPerKm": 45.0,
+      "dielectricConstant": 1.56,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 10, "db": 0.59 },
+          { "mhz": 50, "db": 1.35 },
+          { "mhz": 100, "db": 1.97 },
+          { "mhz": 300, "db": 3.67 },
+          { "mhz": 900, "db": 7.22 }
+        ]
+      },
+      "source": "representative flat twin-lead, dry conditions (20 AWG CCS)"
+    },
+    {
+      "id": "ideal-50",
+      "section": "Ideal (lossless)",
+      "name": "Ideal 50 ohm (lossless)",
+      "category": "coax",
+      "z0Ohms": 50.0,
+      "velocityFactor": 0.66,
+      "capacitancePfPerM": 101.0,
+      "rdcCenterOhmsPerKm": 0.0,
+      "rdcShieldOhmsPerKm": 0.0,
+      "insertionLossCoefficients": { "k1": 0.0, "k2": 0.0, "k3": 0.0 },
+      "source": "teaching ideal: zero loss, textbook lattice-diagram steps"
+    },
+    {
+      "id": "ideal-75",
+      "section": "Ideal (lossless)",
+      "name": "Ideal 75 ohm (lossless)",
+      "category": "coax",
+      "z0Ohms": 75.0,
+      "velocityFactor": 0.66,
+      "capacitancePfPerM": 67.3,
+      "rdcCenterOhmsPerKm": 0.0,
+      "rdcShieldOhmsPerKm": 0.0,
+      "insertionLossCoefficients": { "k1": 0.0, "k2": 0.0, "k3": 0.0 },
+      "source": "teaching ideal: zero loss, textbook lattice-diagram steps"
+    },
+    {
+      "id": "fr4-microstrip-50",
+      "section": "PCB traces",
+      "name": "FR-4 microstrip, 50 ohm (8 mil)",
+      "category": "pcb",
+      "z0Ohms": 50.0,
+      "velocityFactor": 0.55,
+      "capacitancePfPerM": 121.3,
+      "rdcCenterOhmsPerKm": 4800.0,
+      "rdcShieldOhmsPerKm": 200.0,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 100, "db": 81.0 },
+          { "mhz": 500, "db": 273.0 },
+          { "mhz": 1000, "db": 485.0 },
+          { "mhz": 3000, "db": 1270.0 },
+          { "mhz": 10000, "db": 3830.0 }
+        ]
+      },
+      "source": "representative 8 mil half-oz trace over 4 mil FR-4 prepreg (eps_eff ~3.3, tan d ~0.02; ~0.1 dB/in at 1 GHz)"
+    },
+    {
+      "id": "fr4-stripline-50",
+      "section": "PCB traces",
+      "name": "FR-4 stripline, 50 ohm (5 mil)",
+      "category": "pcb",
+      "z0Ohms": 50.0,
+      "velocityFactor": 0.488,
+      "capacitancePfPerM": 136.7,
+      "rdcCenterOhmsPerKm": 7600.0,
+      "rdcShieldOhmsPerKm": 200.0,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 100, "db": 107.0 },
+          { "mhz": 500, "db": 344.0 },
+          { "mhz": 1000, "db": 595.0 },
+          { "mhz": 3000, "db": 1505.0 },
+          { "mhz": 10000, "db": 4440.0 }
+        ]
+      },
+      "source": "representative 5 mil half-oz inner-layer stripline, fully embedded in FR-4 (eps_r ~4.2)"
+    },
+    {
+      "id": "fr4-diffpair-100",
+      "section": "PCB traces",
+      "name": "FR-4 edge-coupled pair, 100 ohm diff",
+      "category": "pcb",
+      "z0Ohms": 100.0,
+      "velocityFactor": 0.55,
+      "capacitancePfPerM": 60.6,
+      "rdcCenterOhmsPerKm": 7600.0,
+      "rdcShieldOhmsPerKm": 7600.0,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 100, "db": 88.0 },
+          { "mhz": 500, "db": 288.0 },
+          { "mhz": 1000, "db": 504.0 },
+          { "mhz": 3000, "db": 1290.0 },
+          { "mhz": 10000, "db": 3850.0 }
+        ]
+      },
+      "source": "representative 100 ohm differential microstrip pair (two 5 mil traces), modeled as one line in the odd mode"
+    },
+    {
+      "id": "ro4350-microstrip-50",
+      "section": "PCB traces",
+      "name": "RO4350B microstrip, 50 ohm (RF)",
+      "category": "pcb",
+      "z0Ohms": 50.0,
+      "velocityFactor": 0.608,
+      "capacitancePfPerM": 109.7,
+      "rdcCenterOhmsPerKm": 1900.0,
+      "rdcShieldOhmsPerKm": 150.0,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 100, "db": 41.0 },
+          { "mhz": 1000, "db": 166.0 },
+          { "mhz": 5000, "db": 524.0 },
+          { "mhz": 10000, "db": 903.0 }
+        ]
+      },
+      "source": "representative 10 mil 1-oz trace on 20 mil Rogers RO4350B (tan d 0.0037 - the low-loss contrast to FR-4)"
+    },
+    {
+      "id": "flex-microstrip-50",
+      "section": "PCB traces",
+      "name": "Polyimide flex microstrip, 50 ohm",
+      "category": "pcb",
+      "z0Ohms": 50.0,
+      "velocityFactor": 0.62,
+      "capacitancePfPerM": 107.6,
+      "rdcCenterOhmsPerKm": 9500.0,
+      "rdcShieldOhmsPerKm": 500.0,
+      "attenuation": {
+        "units": "dB_per_100m",
+        "points": [
+          { "mhz": 100, "db": 67.0 },
+          { "mhz": 1000, "db": 291.0 },
+          { "mhz": 5000, "db": 974.0 },
+          { "mhz": 10000, "db": 1720.0 }
+        ]
+      },
+      "source": "representative 4 mil half-oz trace on polyimide flex (tan d ~0.008)"
+    }
+  ]
+}

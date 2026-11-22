@@ -1,0 +1,117 @@
+<UserControl x:Class="TdrSim.App.Plot.TracePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:scottplot="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
+             xmlns:plot="clr-namespace:TdrSim.App.Plot">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <plot:EnumEqualsConverter x:Key="EnumEq" />
+
+        <Style x:Key="ModeRadio" TargetType="RadioButton">
+            <Setter Property="Margin" Value="5,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="#DDD" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style x:Key="BarLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#888" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="12,0,2,0" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- display-mode bar -->
+        <Border Grid.Row="0" Background="#333337" Padding="6,3">
+            <DockPanel LastChildFill="True">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <TextBlock Text="y:" Style="{StaticResource BarLabel}" Margin="2,0,2,0" />
+                    <RadioButton Content="mV" GroupName="YMode" Style="{StaticResource ModeRadio}"
+                                 IsChecked="{Binding YMode, Converter={StaticResource EnumEq}, ConverterParameter=MilliVolts}" />
+                    <RadioButton Content="mρ" GroupName="YMode" Style="{StaticResource ModeRadio}"
+                                 IsChecked="{Binding YMode, Converter={StaticResource EnumEq}, ConverterParameter=MilliRho}" />
+                    <RadioButton Content="Ω" GroupName="YMode" Style="{StaticResource ModeRadio}"
+                                 IsChecked="{Binding YMode, Converter={StaticResource EnumEq}, ConverterParameter=Ohms}" />
+
+                    <TextBlock Text="x:" Style="{StaticResource BarLabel}" />
+                    <RadioButton Content="ns" GroupName="XMode" Style="{StaticResource ModeRadio}"
+                                 IsChecked="{Binding XMode, Converter={StaticResource EnumEq}, ConverterParameter=TimeNs}" />
+                    <RadioButton Content="m" GroupName="XMode" Style="{StaticResource ModeRadio}"
+                                 IsChecked="{Binding XMode, Converter={StaticResource EnumEq}, ConverterParameter=DistanceM}" />
+
+                    <TextBlock Text="VF:" Style="{StaticResource BarLabel}" />
+                    <TextBox Width="46"
+                             VerticalAlignment="Center"
+                             Text="{Binding DisplayVf, StringFormat={}{0:0.###}}"
+                             IsEnabled="{Binding XMode, Converter={StaticResource EnumEq}, ConverterParameter=DistanceM}" />
+
+                    <Border Width="1" Background="#555" Margin="10,2" />
+                    <ToggleButton Content="Cursors"
+                                  IsChecked="{Binding CursorsEnabled}"
+                                  Padding="9,1"
+                                  VerticalAlignment="Center" />
+                    <Border Width="1" Background="#555" Margin="10,2" />
+                    <Button Content="Set ref"
+                            Command="{Binding SetReferenceCommand}"
+                            Padding="9,1"
+                            VerticalAlignment="Center"
+                            ToolTip="Snapshot the current trace as a reference overlay" />
+                    <Button Content="Clear ref"
+                            Command="{Binding ClearReferenceCommand}"
+                            Padding="9,1"
+                            Margin="4,0,0,0"
+                            VerticalAlignment="Center" />
+                    <Border Width="1" Background="#555" Margin="10,2" />
+                    <Button Content="CSV"
+                            Click="OnExportCsv"
+                            IsEnabled="{Binding HasTrace}"
+                            Padding="9,1"
+                            VerticalAlignment="Center"
+                            ToolTip="Export the current trace as CSV" />
+                    <Button Content="PNG"
+                            Click="OnExportPng"
+                            IsEnabled="{Binding HasTrace}"
+                            Padding="9,1"
+                            Margin="4,0,0,0"
+                            VerticalAlignment="Center"
+                            ToolTip="Export the plot as a PNG image" />
+                </StackPanel>
+                <TextBlock Text="{Binding Warning}"
+                           Foreground="#E2B93B"
+                           FontSize="11"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Margin="12,0,4,0"
+                           TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+        </Border>
+
+        <!-- plot + progress shimmer -->
+        <Grid Grid.Row="1">
+            <scottplot:WpfPlot x:Name="ThePlot" />
+            <ProgressBar Height="3"
+                         VerticalAlignment="Top"
+                         IsIndeterminate="True"
+                         BorderThickness="0"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+        </Grid>
+
+        <!-- cursor readout -->
+        <Border Grid.Row="2"
+                Background="#2D2D30"
+                Padding="8,3"
+                Visibility="{Binding CursorsEnabled, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{Binding CursorReadout}"
+                       Foreground="#CCC"
+                       FontFamily="Consolas"
+                       FontSize="12" />
+        </Border>
+    </Grid>
+</UserControl>

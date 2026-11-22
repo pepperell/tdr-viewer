@@ -1,0 +1,444 @@
+<Window x:Class="TdrSim.App.Shell.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:nodify="https://miroiu.github.io/nodify"
+        xmlns:plot="clr-namespace:TdrSim.App.Plot"
+        xmlns:editor="clr-namespace:TdrSim.App.Editor"
+        Title="{Binding Title}"
+        Width="1400"
+        Height="900"
+        WindowStartupLocation="CenterScreen"
+        Closing="OnWindowClosing">
+    <Window.InputBindings>
+        <!-- Note: a focused TextBox consumes Ctrl+Z for its own text undo first. -->
+        <KeyBinding Modifiers="Control" Key="Z" Command="{Binding UndoCommand}" />
+        <KeyBinding Modifiers="Control" Key="Y" Command="{Binding RedoCommand}" />
+    </Window.InputBindings>
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <DataTemplate x:Key="InputPortTemplate" DataType="{x:Type editor:PortViewModel}">
+            <nodify:NodeInput Header="{Binding Name}"
+                              IsConnected="{Binding IsConnected}"
+                              Anchor="{Binding Anchor, Mode=OneWayToSource}" />
+        </DataTemplate>
+        <DataTemplate x:Key="OutputPortTemplate" DataType="{x:Type editor:PortViewModel}">
+            <nodify:NodeOutput Header="{Binding Name}"
+                               IsConnected="{Binding IsConnected}"
+                               Anchor="{Binding Anchor, Mode=OneWayToSource}" />
+        </DataTemplate>
+
+        <Style x:Key="InspectorHeader" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="#EEE" />
+        </Style>
+        <Style x:Key="InspectorLabel" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,10,0,2" />
+            <Setter Property="Foreground" Value="#AAA" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style x:Key="InspectorNote" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,8,0,0" />
+            <Setter Property="Foreground" Value="#777" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </Window.Resources>
+
+    <DockPanel Background="#2D2D30">
+
+        <!-- toolbar -->
+        <Border DockPanel.Dock="Top" Background="#333337" Padding="6,4">
+            <DockPanel LastChildFill="True">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <Button Content="New" Command="{Binding NewCommand}" Margin="2,0" Padding="10,3" />
+                    <Button Content="Open…" Command="{Binding OpenCommand}" Margin="2,0" Padding="10,3" />
+                    <Button Content="Save" Command="{Binding SaveCommand}" Margin="2,0" Padding="10,3" />
+                    <Button Content="Save As…" Command="{Binding SaveAsCommand}" Margin="2,0" Padding="10,3" />
+                    <Menu VerticalAlignment="Center"
+                          Background="Transparent"
+                          Margin="2,0">
+                        <MenuItem Header="Examples ▾"
+                                  Padding="10,3"
+                                  Foreground="#DDD"
+                                  ItemsSource="{Binding Examples}">
+                            <MenuItem.ItemContainerStyle>
+                                <Style TargetType="MenuItem">
+                                    <Setter Property="Header" Value="{Binding Name}" />
+                                    <Setter Property="ToolTip" Value="{Binding Description}" />
+                                    <Setter Property="Foreground" Value="#1E1E1E" />
+                                    <Setter Property="Command"
+                                            Value="{Binding DataContext.OpenExampleCommand,
+                                                    RelativeSource={RelativeSource AncestorType=Window}}" />
+                                    <Setter Property="CommandParameter" Value="{Binding}" />
+                                </Style>
+                            </MenuItem.ItemContainerStyle>
+                        </MenuItem>
+                    </Menu>
+                    <Border Width="1" Background="#555" Margin="8,2" />
+                    <Button Content="↶ Undo" Command="{Binding UndoCommand}" Margin="2,0" Padding="8,3" />
+                    <Button Content="↷ Redo" Command="{Binding RedoCommand}" Margin="2,0" Padding="8,3" />
+                    <Border Width="1" Background="#555" Margin="8,2" />
+                    <ToggleButton Content="● Live"
+                                  IsChecked="{Binding IsLive}"
+                                  FontWeight="Bold"
+                                  Margin="2,0"
+                                  Padding="12,3"
+                                  ToolTip="Recompute the trace on every edit" />
+                    <Button Content="⟳ Refresh"
+                            Command="{Binding RefreshCommand}"
+                            Margin="2,0"
+                            Padding="12,3"
+                            ToolTip="Force one full-resolution run" />
+                    <Border Width="1" Background="#555" Margin="8,2" />
+                    <TextBlock Text="instrument"
+                               Foreground="#888"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               Margin="4,0,4,0" />
+                    <ComboBox Width="150"
+                              VerticalAlignment="Center"
+                              ItemsSource="{Binding Instrument.Presets}"
+                              SelectedItem="{Binding Instrument.SelectedPreset}"
+                              DisplayMemberPath="Name" />
+                    <TextBlock Text="rise"
+                               Foreground="#888"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               Margin="10,0,4,0" />
+                    <Slider Width="130"
+                            Minimum="1"
+                            Maximum="3.69897"
+                            Value="{Binding Instrument.RiseTimeLog}"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Rise time" />
+                    <TextBlock Text="{Binding Instrument.EffectiveRiseTimePs, StringFormat={}{0:0.#} ps}"
+                               Foreground="#DDD"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               MinWidth="46"
+                               Margin="6,0,0,0" />
+                    <Button Content="×"
+                            Command="{Binding Instrument.ClearRiseTimeOverrideCommand}"
+                            Padding="6,0"
+                            Margin="2,0"
+                            ToolTip="Clear the rise-time override (back to the preset)" />
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding Badges}"
+                              VerticalAlignment="Center"
+                              Margin="12,0,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border CornerRadius="9" Padding="9,2" Margin="3,0" ToolTip="{Binding Tooltip}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="#8C6D1F" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsFatal}" Value="True">
+                                                <Setter Property="Background" Value="#A33A3A" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding Label}" Foreground="White" FontSize="11" />
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+        </Border>
+
+        <!-- status line -->
+        <Border DockPanel.Dock="Bottom" Background="#007ACC" Padding="8,2">
+            <TextBlock Text="{Binding Status}" Foreground="White" FontSize="12" />
+        </Border>
+
+        <!-- trace / pulse views -->
+        <TabControl DockPanel.Dock="Bottom"
+                    Height="345"
+                    Background="#2D2D30"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="#3F3F46"
+                    SelectedIndex="{Binding ActiveViewIndex}">
+            <TabItem Header="TDR trace">
+                <plot:TracePanel DataContext="{Binding TracePanel}" />
+            </TabItem>
+            <TabItem Header="Pulse view">
+                <plot:PulsePanel DataContext="{Binding Pulse}" />
+            </TabItem>
+        </TabControl>
+
+        <!-- palette | canvas | inspector -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="195" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="280" />
+            </Grid.ColumnDefinitions>
+
+            <!-- palette -->
+            <Border Grid.Column="0" Background="#252526">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Palette.Groups}" Margin="0,4">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type editor:PaletteGroup}">
+                                <StackPanel Margin="8,6,8,0">
+                                    <TextBlock Text="{Binding Header}"
+                                               FontWeight="Bold"
+                                               Foreground="#888"
+                                               FontSize="11"
+                                               Margin="2,0,0,3" />
+                                    <ItemsControl ItemsSource="{Binding Items}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type editor:PaletteItem}">
+                                                <Border Background="#3E3E42"
+                                                        CornerRadius="3"
+                                                        Margin="0,2"
+                                                        Padding="8,4"
+                                                        Cursor="Hand"
+                                                        MouseMove="OnPaletteItemMouseMove">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                                    <Setter Property="Opacity" Value="0.35" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock Text="{Binding Label}"
+                                                               Foreground="#EEE"
+                                                               FontSize="12"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <!-- canvas -->
+            <nodify:NodifyEditor x:Name="EditorCanvas"
+                                 Grid.Column="1"
+                                 Background="#1E1E1E"
+                                 ItemsSource="{Binding Editor.Nodes}"
+                                 Connections="{Binding Editor.Connections}"
+                                 SelectedItems="{Binding Editor.SelectedNodes}"
+                                 PendingConnection="{Binding Editor.PendingConnection}"
+                                 DisconnectConnectorCommand="{Binding Editor.DisconnectPortCommand}"
+                                 AllowDrop="True"
+                                 DragOver="OnEditorDragOver"
+                                 Drop="OnEditorDrop">
+                <nodify:NodifyEditor.InputBindings>
+                    <KeyBinding Key="Delete" Command="{Binding Editor.DeleteSelectionCommand}" />
+                </nodify:NodifyEditor.InputBindings>
+
+                <nodify:NodifyEditor.Resources>
+                    <!-- node templates scoped to the canvas so the inspector can use its own -->
+                    <DataTemplate DataType="{x:Type editor:TdrNodeViewModel}">
+                        <nodify:Node Header="{Binding Title}"
+                                     Output="{Binding OutputPorts}"
+                                     OutputConnectorTemplate="{StaticResource OutputPortTemplate}" />
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type editor:CableNodeViewModel}">
+                        <nodify:Node Header="{Binding Title}"
+                                     Input="{Binding InputPorts}"
+                                     Output="{Binding OutputPorts}"
+                                     InputConnectorTemplate="{StaticResource InputPortTemplate}"
+                                     OutputConnectorTemplate="{StaticResource OutputPortTemplate}" />
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type editor:ConnectorNodeViewModel}">
+                        <nodify:Node Header="{Binding Title}"
+                                     Input="{Binding InputPorts}"
+                                     Output="{Binding OutputPorts}"
+                                     InputConnectorTemplate="{StaticResource InputPortTemplate}"
+                                     OutputConnectorTemplate="{StaticResource OutputPortTemplate}" />
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type editor:LoadNodeViewModel}">
+                        <nodify:Node Header="{Binding Title}"
+                                     Input="{Binding InputPorts}"
+                                     InputConnectorTemplate="{StaticResource InputPortTemplate}" />
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type editor:JunctionNodeViewModel}">
+                        <nodify:Node Header="{Binding Title}"
+                                     Input="{Binding InputPorts}"
+                                     InputConnectorTemplate="{StaticResource InputPortTemplate}" />
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type editor:FaultNodeViewModel}">
+                        <nodify:Node Header="{Binding Title}"
+                                     Input="{Binding InputPorts}"
+                                     Output="{Binding OutputPorts}"
+                                     InputConnectorTemplate="{StaticResource InputPortTemplate}"
+                                     OutputConnectorTemplate="{StaticResource OutputPortTemplate}" />
+                    </DataTemplate>
+                </nodify:NodifyEditor.Resources>
+
+                <nodify:NodifyEditor.ItemContainerStyle>
+                    <Style TargetType="{x:Type nodify:ItemContainer}">
+                        <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
+                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                    </Style>
+                </nodify:NodifyEditor.ItemContainerStyle>
+
+                <nodify:NodifyEditor.ConnectionTemplate>
+                    <DataTemplate DataType="{x:Type editor:ConnectionViewModel}">
+                        <nodify:LineConnection Source="{Binding Source.Anchor}"
+                                               Target="{Binding Target.Anchor}"
+                                               DisconnectCommand="{Binding RemoveCommand}" />
+                    </DataTemplate>
+                </nodify:NodifyEditor.ConnectionTemplate>
+
+                <nodify:NodifyEditor.PendingConnectionTemplate>
+                    <DataTemplate DataType="{x:Type editor:PendingConnectionViewModel}">
+                        <nodify:PendingConnection StartedCommand="{Binding StartCommand}"
+                                                  CompletedCommand="{Binding FinishCommand}" />
+                    </DataTemplate>
+                </nodify:NodifyEditor.PendingConnectionTemplate>
+            </nodify:NodifyEditor>
+
+            <!-- inspector -->
+            <Border Grid.Column="2" Background="#252526">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ContentControl Content="{Binding InspectorContent}" Margin="12">
+                        <ContentControl.Resources>
+
+                            <DataTemplate DataType="{x:Type editor:CableNodeViewModel}">
+                                <StackPanel>
+                                    <TextBlock Text="Cable" Style="{StaticResource InspectorHeader}" />
+                                    <TextBlock Text="Preset" Style="{StaticResource InspectorLabel}" />
+                                    <ComboBox ItemsSource="{Binding Presets}"
+                                              SelectedItem="{Binding SelectedPreset}"
+                                              DisplayMemberPath="Name" />
+                                    <TextBlock Text="Length (m)" Style="{StaticResource InspectorLabel}" />
+                                    <DockPanel>
+                                        <TextBox DockPanel.Dock="Right"
+                                                 Width="64"
+                                                 Text="{Binding LengthM, StringFormat={}{0:0.###}}" />
+                                        <Slider Minimum="-1"
+                                                Maximum="3"
+                                                Value="{Binding LengthLog}"
+                                                Margin="0,0,6,0"
+                                                VerticalAlignment="Center" />
+                                    </DockPanel>
+                                    <TextBlock Text="Z0 override (Ω)" Style="{StaticResource InspectorLabel}" />
+                                    <TextBox Text="{Binding Z0OverrideOhms, TargetNullValue=''}" />
+                                    <TextBlock Text="VF override (0–1)" Style="{StaticResource InspectorLabel}" />
+                                    <TextBox Text="{Binding VfOverride, TargetNullValue=''}" />
+                                    <TextBlock Text="Blank override = preset value."
+                                               Style="{StaticResource InspectorNote}" />
+                                </StackPanel>
+                            </DataTemplate>
+
+                            <DataTemplate DataType="{x:Type editor:LoadNodeViewModel}">
+                                <StackPanel>
+                                    <TextBlock Text="Load" Style="{StaticResource InspectorHeader}" />
+                                    <TextBlock Text="Kind" Style="{StaticResource InspectorLabel}" />
+                                    <ComboBox ItemsSource="{Binding Kinds}"
+                                              SelectedItem="{Binding LoadKind}" />
+                                    <StackPanel Visibility="{Binding UsesR, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="R (Ω)" Style="{StaticResource InspectorLabel}" />
+                                        <TextBox Text="{Binding ROhms, TargetNullValue=''}" />
+                                    </StackPanel>
+                                    <StackPanel Visibility="{Binding UsesL, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="L (nH)" Style="{StaticResource InspectorLabel}" />
+                                        <TextBox Text="{Binding LNanohenries, TargetNullValue=''}" />
+                                    </StackPanel>
+                                    <StackPanel Visibility="{Binding UsesC, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="C (pF)" Style="{StaticResource InspectorLabel}" />
+                                        <TextBox Text="{Binding CPicofarads, TargetNullValue=''}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+
+                            <DataTemplate DataType="{x:Type editor:ConnectorNodeViewModel}">
+                                <StackPanel>
+                                    <TextBlock Text="Connector" Style="{StaticResource InspectorHeader}" />
+                                    <TextBlock Text="Preset" Style="{StaticResource InspectorLabel}" />
+                                    <ComboBox ItemsSource="{Binding Presets}"
+                                              SelectedItem="{Binding SelectedPreset}"
+                                              DisplayMemberPath="Name" />
+                                </StackPanel>
+                            </DataTemplate>
+
+                            <DataTemplate DataType="{x:Type editor:JunctionNodeViewModel}">
+                                <StackPanel>
+                                    <TextBlock Text="Junction" Style="{StaticResource InspectorHeader}" />
+                                    <TextBlock Text="Purely visual: everything wired to it becomes one electrical node."
+                                               Style="{StaticResource InspectorNote}" />
+                                </StackPanel>
+                            </DataTemplate>
+
+                            <DataTemplate DataType="{x:Type editor:FaultNodeViewModel}">
+                                <StackPanel>
+                                    <TextBlock Text="Fault" Style="{StaticResource InspectorHeader}" />
+                                    <StackPanel Visibility="{Binding IsSection, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="Base cable" Style="{StaticResource InspectorLabel}" />
+                                        <ComboBox ItemsSource="{Binding CablePresets}"
+                                                  SelectedItem="{Binding SelectedBasePreset}"
+                                                  DisplayMemberPath="Name" />
+                                        <TextBlock Text="Section length (m)" Style="{StaticResource InspectorLabel}" />
+                                        <TextBox Text="{Binding LengthM, TargetNullValue=''}" />
+                                        <TextBlock Text="Z0 scale (0–1)" Style="{StaticResource InspectorLabel}" />
+                                        <TextBox Text="{Binding Z0Scale, TargetNullValue=''}" />
+                                        <TextBlock Text="Extra dielectric loss (dB/100 m @ 100 MHz)"
+                                                   Style="{StaticResource InspectorLabel}" />
+                                        <TextBox Text="{Binding ExtraLossDbPer100m, TargetNullValue=''}" />
+                                        <TextBlock Text="Z0 and velocity both scale (dielectric change at constant L)."
+                                                   Style="{StaticResource InspectorNote}" />
+                                    </StackPanel>
+                                    <StackPanel Visibility="{Binding IsBridge, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="Bridge resistance (Ω)" Style="{StaticResource InspectorLabel}" />
+                                        <TextBox Text="{Binding ROhms, TargetNullValue=''}" />
+                                    </StackPanel>
+                                    <StackPanel Visibility="{Binding IsSeries, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="Series resistance (Ω)" Style="{StaticResource InspectorLabel}" />
+                                        <TextBox Text="{Binding ROhms, TargetNullValue=''}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+
+                            <DataTemplate DataType="{x:Type editor:TdrNodeViewModel}">
+                                <ContentControl Content="{Binding Instrument}" />
+                            </DataTemplate>
+
+                            <DataTemplate DataType="{x:Type editor:InstrumentViewModel}">
+                                <StackPanel>
+                                    <TextBlock Text="Instrument" Style="{StaticResource InspectorHeader}" />
+                                    <TextBlock Text="Preset" Style="{StaticResource InspectorLabel}" />
+                                    <ComboBox ItemsSource="{Binding Presets}"
+                                              SelectedItem="{Binding SelectedPreset}"
+                                              DisplayMemberPath="Name" />
+                                    <TextBlock Text="Rise time override (ps)" Style="{StaticResource InspectorLabel}" />
+                                    <TextBox Text="{Binding RiseTimePsOverride, TargetNullValue=''}" />
+                                    <TextBlock Text="Amplitude override (V)" Style="{StaticResource InspectorLabel}" />
+                                    <TextBox Text="{Binding AmplitudeVoltsOverride, TargetNullValue=''}" />
+                                    <TextBlock Text="Source impedance override (Ω)" Style="{StaticResource InspectorLabel}" />
+                                    <TextBox Text="{Binding SourceImpedanceOverrideOhms, TargetNullValue=''}" />
+                                    <TextBlock Text="Noise RMS (mV, blank = preset floor, 0 = off)" Style="{StaticResource InspectorLabel}" />
+                                    <TextBox AutomationProperties.Name="Noise RMS"
+                                             Text="{Binding NoiseRmsMillivolts, TargetNullValue=''}" />
+                                    <TextBlock Text="Averaging (sweeps)" Style="{StaticResource InspectorLabel}" />
+                                    <ComboBox ItemsSource="{Binding AveragingOptions}"
+                                              SelectedItem="{Binding AveragingSweeps}" />
+                                    <TextBlock Text="Blank override = preset value. Select a node to edit it here."
+                                               Style="{StaticResource InspectorNote}" />
+                                </StackPanel>
+                            </DataTemplate>
+
+                        </ContentControl.Resources>
+                    </ContentControl>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

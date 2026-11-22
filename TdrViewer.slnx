@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TdrSim.App/TdrSim.App.csproj" />
+    <Project Path="src/TdrSim.Core/TdrSim.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TdrSim.Core.Tests/TdrSim.Core.Tests.csproj" />
+  </Folder>
+</Solution>

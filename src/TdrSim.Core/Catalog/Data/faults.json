@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "water-ingress",
+      "name": "Water ingress",
+      "kind": "sectionOverride",
+      "defaults": { "lengthM": 2.0, "z0Scale": 0.7, "extraDielectricLossDbPer100m": 3.0 }
+    },
+    {
+      "id": "crush",
+      "name": "Crushed section",
+      "kind": "sectionOverride",
+      "defaults": { "lengthM": 0.3, "z0Scale": 0.75 }
+    },
+    {
+      "id": "resistive-bridge",
+      "name": "Resistive bridge fault",
+      "kind": "shuntBridge",
+      "defaults": { "bridgeResistanceOhms": 470.0 }
+    },
+    {
+      "id": "series-fault",
+      "name": "Series resistance fault",
+      "kind": "seriesFault",
+      "defaults": { "seriesResistanceOhms": 10.0 }
+    }
+  ]
+}

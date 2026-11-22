@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "tek-80e04",
+      "name": "Lab sampling TDR (Tek 80E04 class)",
+      "stepAmplitudeVolts": 0.25,
+      "riseTime1090Ps": 23,
+      "sourceImpedanceOhms": 50,
+      "noiseFloorMillivolts": 0.4,
+      "source": "Tektronix 80E04 datasheet: 250 mV into 50 ohm, 23 ps incident; ~400 uV RMS single-sweep noise typical"
+    },
+    {
+      "id": "tek-80e10b",
+      "name": "Fast lab sampling TDR (Tek 80E10B class)",
+      "stepAmplitudeVolts": 0.25,
+      "riseTime1090Ps": 12,
+      "sourceImpedanceOhms": 50,
+      "noiseFloorMillivolts": 0.5,
+      "source": "Tektronix 80E10B datasheet: 250 mV, 12 ps incident; wider bandwidth, slightly higher noise than 80E04"
+    },
+    {
+      "id": "tek-1502c",
+      "name": "Portable metallic TDR (Tek 1502C class)",
+      "stepAmplitudeVolts": 0.3,
+      "riseTime1090Ps": 200,
+      "sourceImpedanceOhms": 50,
+      "noiseFloorMillivolts": 2.0,
+      "source": "Tektronix 1502C datasheet: 300 mV nominal into 50 ohm, 200 ps system; portable-class ~2 mV screen noise"
+    },
+    {
+      "id": "catv-75",
+      "name": "CATV TDR (75 ohm)",
+      "stepAmplitudeVolts": 0.25,
+      "riseTime1090Ps": 500,
+      "sourceImpedanceOhms": 75,
+      "noiseFloorMillivolts": 2.5,
+      "source": "representative 75 ohm instrument"
+    },
+    {
+      "id": "cable-tester",
+      "name": "Handheld cable tester",
+      "stepAmplitudeVolts": 2.0,
+      "riseTime1090Ps": 2000,
+      "sourceImpedanceOhms": 50,
+      "noiseFloorMillivolts": 10.0,
+      "source": "representative handheld class (datasheets specify pulse width, not rise time); coarse front end"
+    }
+  ]
+}

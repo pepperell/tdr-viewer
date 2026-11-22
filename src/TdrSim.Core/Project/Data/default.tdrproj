@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "instrument": {
+    "presetId": "tek-1502c"
+  },
+  "nodes": [
+    {
+      "id": "tdr",
+      "kind": "Tdr",
+      "x": 40,
+      "y": 200
+    },
+    {
+      "id": "feed",
+      "kind": "Cable",
+      "x": 260,
+      "y": 200,
+      "cablePresetId": "rg58-belden-9201",
+      "lengthM": 30
+    },
+    {
+      "id": "stub",
+      "kind": "Cable",
+      "x": 560,
+      "y": 90,
+      "cablePresetId": "rg58-belden-9201",
+      "lengthM": 10
+    },
+    {
+      "id": "tail",
+      "kind": "Cable",
+      "x": 560,
+      "y": 310,
+      "cablePresetId": "rg58-belden-9201",
+      "lengthM": 20
+    }
+  ],
+  "wires": [
+    {
+      "fromNodeId": "tdr",
+      "fromPort": "P",
+      "toNodeId": "feed",
+      "toPort": "A"
+    },
+    {
+      "fromNodeId": "feed",
+      "fromPort": "B",
+      "toNodeId": "stub",
+      "toPort": "A"
+    },
+    {
+      "fromNodeId": "feed",
+      "fromPort": "B",
+      "toNodeId": "tail",
+      "toPort": "A"
+    }
+  ]
+}

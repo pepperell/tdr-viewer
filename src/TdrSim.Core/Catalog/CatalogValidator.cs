@@ -1,0 +1,109 @@
+namespace TdrSim.Core.Catalog;
+
+public static class CatalogValidator
+{
+    private static readonly string[] CableCategories = ["coax", "twisted-pair", "pcb"];
+    private static readonly string[] FaultKinds = ["sectionOverride", "shuntBridge", "seriesFault"];
+
+    /// <summary>Returns a list of human-readable problems; empty means valid.</summary>
+    public static IReadOnlyList<string> Validate(ComponentCatalog catalog)
+    {
+        var errors = new List<string>();
+
+        CheckIds(errors, "cable", catalog.Cables.Select(c => c.Id));
+        CheckIds(errors, "connector", catalog.Connectors.Select(c => c.Id));
+        CheckIds(errors, "instrument", catalog.Instruments.Select(i => i.Id));
+        CheckIds(errors, "fault", catalog.Faults.Select(f => f.Id));
+
+        foreach (var cable in catalog.Cables)
+        {
+            ValidateCable(errors, cable);
+        }
+
+        foreach (var connector in catalog.Connectors)
+        {
+            if (connector.SeriesResistanceOhms < 0 || connector.SeriesInductanceNh < 0 ||
+                connector.ShuntCapacitanceNearPf < 0 || connector.ShuntCapacitanceFarPf < 0)
+            {
+                errors.Add($"connector '{connector.Id}': negative element value");
+            }
+        }
+
+        foreach (var instrument in catalog.Instruments)
+        {
+            if (instrument.StepAmplitudeVolts <= 0)
+                errors.Add($"instrument '{instrument.Id}': stepAmplitudeVolts must be > 0");
+            if (instrument.RiseTime1090Ps <= 0)
+                errors.Add($"instrument '{instrument.Id}': riseTime1090Ps must be > 0");
+            if (instrument.SourceImpedanceOhms <= 0)
+                errors.Add($"instrument '{instrument.Id}': sourceImpedanceOhms must be > 0");
+            if (instrument.NoiseFloorMillivolts < 0)
+                errors.Add($"instrument '{instrument.Id}': noiseFloorMillivolts must be >= 0");
+        }
+
+        foreach (var fault in catalog.Faults)
+        {
+            if (!FaultKinds.Contains(fault.Kind))
+                errors.Add($"fault '{fault.Id}': unknown kind '{fault.Kind}'");
+            if (fault.Defaults.Z0Scale is <= 0)
+                errors.Add($"fault '{fault.Id}': z0Scale must be > 0");
+            if (fault.Defaults.LengthM is <= 0)
+                errors.Add($"fault '{fault.Id}': lengthM must be > 0");
+        }
+
+        return errors;
+    }
+
+    private static void ValidateCable(List<string> errors, CableSpec cable)
+    {
+        if (!CableCategories.Contains(cable.Category))
+            errors.Add($"cable '{cable.Id}': unknown category '{cable.Category}'");
+        if (cable.Z0Ohms is < 1 or > 1000)
+            errors.Add($"cable '{cable.Id}': z0Ohms out of range [1, 1000]");
+        if (cable.VelocityFactor is <= 0 or > 1)
+            errors.Add($"cable '{cable.Id}': velocityFactor out of range (0, 1]");
+        if (cable.CapacitancePfPerM <= 0)
+            errors.Add($"cable '{cable.Id}': capacitancePfPerM must be > 0");
+        if (cable.RdcCenterOhmsPerKm < 0 || cable.RdcShieldOhmsPerKm < 0)
+            errors.Add($"cable '{cable.Id}': negative DC resistance");
+        if (cable.DielectricConstant is < 1)
+            errors.Add($"cable '{cable.Id}': dielectricConstant must be >= 1");
+        if (cable.Attenuation is null && cable.InsertionLossCoefficients is null)
+            errors.Add($"cable '{cable.Id}': needs attenuation table or insertion-loss coefficients");
+
+        if (cable.Attenuation is { } att)
+        {
+            if (att.Units != "dB_per_100m")
+                errors.Add($"cable '{cable.Id}': unsupported attenuation units '{att.Units}'");
+            if (att.Points.Count == 0)
+                errors.Add($"cable '{cable.Id}': attenuation table is empty");
+
+            for (int i = 0; i < att.Points.Count; i++)
+            {
+                if (att.Points[i].Mhz <= 0 || att.Points[i].Db <= 0)
+                    errors.Add($"cable '{cable.Id}': attenuation point {i} must be positive");
+                if (i > 0 && att.Points[i].Mhz <= att.Points[i - 1].Mhz)
+                    errors.Add($"cable '{cable.Id}': attenuation points not sorted by MHz");
+                if (i > 0 && att.Points[i].Db < att.Points[i - 1].Db)
+                    errors.Add($"cable '{cable.Id}': attenuation must not decrease with frequency");
+            }
+        }
+
+        if (cable.InsertionLossCoefficients is { } il && (il.K1 < 0 || il.K2 < 0 || il.K3 < 0))
+        {
+            errors.Add($"cable '{cable.Id}': negative insertion-loss coefficient");
+        }
+    }
+
+    private static void CheckIds(List<string> errors, string kind, IEnumerable<string> ids)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var id in ids)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                errors.Add($"{kind}: empty id");
+            else if (!seen.Add(id))
+                errors.Add($"{kind} '{id}': duplicate id");
+        }
+    }
+}

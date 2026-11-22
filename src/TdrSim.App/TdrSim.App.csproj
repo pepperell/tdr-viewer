@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nodify" />
+    <PackageReference Include="ScottPlot.WPF" />
+    <!-- ScottPlot.WPF's SkiaSharp.Views.WPF dependency ships only net4x assets; the
+         compat shim works on modern .NET but trips NU1701 under warnings-as-errors.
+         Referenced directly so the suppression stays scoped to this one package. -->
+    <PackageReference Include="SkiaSharp.Views.WPF" NoWarn="NU1701" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TdrSim.Core\TdrSim.Core.csproj" />
+  </ItemGroup>
+
+</Project>
