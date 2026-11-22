@@ -10,9 +10,10 @@ namespace TdrSim.Core.Project;
 /// </summary>
 public sealed record ProjectDocument
 {
-    /// <summary>v2 (M5) added fault nodes and instrument noise; v1 is a strict subset
-    /// and loads unchanged. Files are always written at the current version.</summary>
-    public const int CurrentSchemaVersion = 2;
+    /// <summary>v2 (M5) added fault nodes and instrument noise; v3 added connector-type
+    /// overrides on the TDR and cable ends. Each older version is a strict subset and
+    /// loads unchanged. Files are always written at the current version.</summary>
+    public const int CurrentSchemaVersion = 3;
 
     public const int OldestReadableSchemaVersion = 1;
 
@@ -101,6 +102,11 @@ public sealed record DocumentNode
     public double? Z0OverrideOhms { get; init; }
     public double? VfOverride { get; init; }
 
+    /// <summary>Connector family on each cable end (schema v3): null = the preset's
+    /// default, "none" = bare end, otherwise a ConnectorFamilySpec id.</summary>
+    public string? ConnectorAId { get; init; }
+    public string? ConnectorBId { get; init; }
+
     // Load
     public LoadKind? LoadKind { get; init; }
     public double? ROhms { get; init; }
@@ -141,4 +147,8 @@ public sealed record InstrumentDocument
 
     /// <summary>Simulated sweep averaging (schema v2); null = 1 (no averaging).</summary>
     public int? AveragingSweeps { get; init; }
+
+    /// <summary>Front-panel connector family (schema v3): null = the preset's default,
+    /// "none" = bare terminals, otherwise a ConnectorFamilySpec id.</summary>
+    public string? PortConnectorId { get; init; }
 }

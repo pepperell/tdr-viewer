@@ -143,6 +143,9 @@
                                             <DataTrigger Binding="{Binding IsFatal}" Value="True">
                                                 <Setter Property="Background" Value="#A33A3A" />
                                             </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsInfo}" Value="True">
+                                                <Setter Property="Background" Value="#2E5C8A" />
+                                            </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
@@ -334,6 +337,18 @@
                                     <TextBox Text="{Binding Z0OverrideOhms, TargetNullValue=''}" />
                                     <TextBlock Text="VF override (0–1)" Style="{StaticResource InspectorLabel}" />
                                     <TextBox Text="{Binding VfOverride, TargetNullValue=''}" />
+                                    <TextBlock Text="Connector, end A" Style="{StaticResource InspectorLabel}" />
+                                    <ComboBox AutomationProperties.Name="Connector A"
+                                              ItemsSource="{Binding ConnectorChoiceList}"
+                                              SelectedItem="{Binding SelectedConnectorA}"
+                                              DisplayMemberPath="Label" />
+                                    <TextBlock Text="Connector, end B" Style="{StaticResource InspectorLabel}" />
+                                    <ComboBox AutomationProperties.Name="Connector B"
+                                              ItemsSource="{Binding ConnectorChoiceList}"
+                                              SelectedItem="{Binding SelectedConnectorB}"
+                                              DisplayMemberPath="Label" />
+                                    <TextBlock Text="{Binding EffectiveConnectorsNote}"
+                                               Style="{StaticResource InspectorNote}" />
                                     <TextBlock Text="Blank override = preset value."
                                                Style="{StaticResource InspectorNote}" />
                                 </StackPanel>
@@ -424,6 +439,13 @@
                                     <TextBox Text="{Binding AmplitudeVoltsOverride, TargetNullValue=''}" />
                                     <TextBlock Text="Source impedance override (Ω)" Style="{StaticResource InspectorLabel}" />
                                     <TextBox Text="{Binding SourceImpedanceOverrideOhms, TargetNullValue=''}" />
+                                    <TextBlock Text="Panel connector" Style="{StaticResource InspectorLabel}" />
+                                    <ComboBox AutomationProperties.Name="Panel connector"
+                                              ItemsSource="{Binding ConnectorChoiceList}"
+                                              SelectedItem="{Binding SelectedPortConnector}"
+                                              DisplayMemberPath="Label" />
+                                    <TextBlock Text="{Binding EffectivePortConnectorNote}"
+                                               Style="{StaticResource InspectorNote}" />
                                     <TextBlock Text="Noise RMS (mV, blank = preset floor, 0 = off)" Style="{StaticResource InspectorLabel}" />
                                     <TextBox AutomationProperties.Name="Noise RMS"
                                              Text="{Binding NoiseRmsMillivolts, TargetNullValue=''}" />

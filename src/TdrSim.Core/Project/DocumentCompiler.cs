@@ -29,6 +29,10 @@ public enum DocumentIssueKind
 
     /// <summary>Bad fault parameters (scale, resistance, derived VF out of range).</summary>
     InvalidFaultValues,
+
+    /// <summary>Advisory: two connectorized ends meet whose families cannot be joined
+    /// by an RF adapter (balanced vs coax needs a balun); they are joined ideally.</summary>
+    UnadaptableInterface,
 }
 
 public sealed record DocumentIssue
@@ -41,8 +45,9 @@ public sealed record DocumentIssue
     public IReadOnlyList<string> NodeIds { get; init; } = [];
 
     /// <summary>Fatal issues prevent a model from being produced; advisory ones
-    /// describe elements the compiler omitted.</summary>
-    public bool IsFatal => Kind != DocumentIssueKind.DisconnectedFromSource;
+    /// describe elements the compiler omitted or joined ideally.</summary>
+    public bool IsFatal => Kind is not DocumentIssueKind.DisconnectedFromSource
+        and not DocumentIssueKind.UnadaptableInterface;
 }
 
 /// <summary>A net the pulse view can probe, keyed by the document node sitting on it.</summary>
@@ -64,6 +69,10 @@ public sealed record DocumentCompilation
     /// <summary>Observable points for the pulse view (TDR port, loads, junctions,
     /// bridge faults), in document order; empty when there is no model.</summary>
     public required IReadOnlyList<DocumentProbe> Probes { get; init; }
+
+    /// <summary>One line per automatically inserted connector interface (mated pairs,
+    /// adapters) describing the physical hardware the model now contains.</summary>
+    public required IReadOnlyList<string> InterfaceNotes { get; init; }
 
     public bool HasFatalIssues => Issues.Any(i => i.IsFatal);
 }
@@ -138,6 +147,166 @@ public static class DocumentCompiler
                 NetOf(node.Id, port);
         }
 
+        // ---- automatic connector interfaces ----
+        // Where exactly two connectorized ends (the TDR's panel connector, a cable
+        // end's connector) share a net, splice the physical interface in between:
+        // a mated pair for matching families, a between-series adapter otherwise.
+        // Multi-way nets (junction tees) and nets with other members stay ideal.
+        int totalNets = classIndex.Count;
+        var remap = new Dictionary<(string Node, string Port), NodeId>();
+        var interfaceElements = new List<(DocumentNode Node, Element Element)>();
+        var interfaceNotes = new List<string>();
+
+        ConnectorFamilySpec? EndpointFamily(DocumentNode node, string port)
+        {
+            string? familyId;
+            switch (node.Kind)
+            {
+                case DocumentNodeKind.Tdr:
+                    var preset = catalog.Instruments.FirstOrDefault(
+                        i => i.Id == document.Instrument.PresetId);
+                    familyId = document.Instrument.PortConnectorId ?? preset?.PortConnector;
+                    break;
+                case DocumentNodeKind.Cable:
+                    var spec = node.CablePresetId is null
+                        ? null
+                        : catalog.Cables.FirstOrDefault(c => c.Id == node.CablePresetId);
+                    familyId = (port == DocumentPorts.A ? node.ConnectorAId : node.ConnectorBId)
+                        ?? spec?.DefaultConnector;
+                    break;
+                default:
+                    return null;
+            }
+
+            // Unknown override ids were already flagged by the sweep below; resolving
+            // to null here just suppresses interface insertion for the broken end.
+            return familyId is null or "none"
+                ? null
+                : catalog.ConnectorFamilies.FirstOrDefault(f => f.Id == familyId);
+        }
+
+        void CheckFamilyRef(string? familyId, string owner, DocumentNode? node)
+        {
+            if (familyId is null or "none" || catalog.ConnectorFamilies.Any(f => f.Id == familyId))
+                return;
+            issues.Add(new DocumentIssue
+            {
+                Kind = DocumentIssueKind.UnknownPresetId,
+                Message = $"{owner} references unknown connector family '{familyId}'.",
+                NodeIds = node is null ? [] : [node.Id],
+            });
+        }
+
+        CheckFamilyRef(document.Instrument.PortConnectorId, "The instrument", null);
+        foreach (var node in document.Nodes.Where(n => n.Kind == DocumentNodeKind.Cable))
+        {
+            CheckFamilyRef(node.ConnectorAId, $"Cable '{node.Id}' end A", node);
+            CheckFamilyRef(node.ConnectorBId, $"Cable '{node.Id}' end B", node);
+        }
+
+        var termsByClass = new Dictionary<int, List<(DocumentNode Node, string Port)>>();
+        foreach (var node in document.Nodes)
+        {
+            foreach (var port in DocumentPorts.For(node))
+            {
+                int root = Find(terminals[(node.Id, port)]);
+                (termsByClass.TryGetValue(root, out var list)
+                    ? list
+                    : termsByClass[root] = []).Add((node, port));
+            }
+        }
+
+        foreach (var members in termsByClass.Values)
+        {
+            if (members.Count != 2)
+                continue;
+            var (n1, p1) = members[0];
+            var (n2, p2) = members[1];
+            if (n1.Id == n2.Id)
+                continue; // a self-looped two-port keeps its SelfLoop diagnostic
+
+            var f1 = EndpointFamily(n1, p1);
+            var f2 = EndpointFamily(n2, p2);
+            if (f1 is null || f2 is null)
+                continue;
+
+            // The TDR side keeps its net: the source reference plane never moves.
+            if (n2.Kind == DocumentNodeKind.Tdr)
+                ((n1, p1, f1), (n2, p2, f2)) = ((n2, p2, f2), (n1, p1, f1));
+
+            if (f1.Id != f2.Id && (f1.Balanced || f2.Balanced))
+            {
+                issues.Add(new DocumentIssue
+                {
+                    Kind = DocumentIssueKind.UnadaptableInterface,
+                    Message = $"'{n1.Id}' ({f1.Name}) and '{n2.Id}' ({f2.Name}) cannot be " +
+                        "joined by an RF adapter (needs a balun); connected ideally.",
+                    NodeIds = [n1.Id, n2.Id],
+                });
+                continue;
+            }
+
+            var cursor = NetOf(n1.Id, p1);
+            NodeId Next()
+            {
+                var next = new NodeId(totalNets++);
+                return next;
+            }
+
+            void AddLump(ConnectorSpec lump)
+            {
+                var next = Next();
+                interfaceElements.Add((n2, new Connector(cursor, next, lump)));
+                cursor = next;
+            }
+
+            void AddSection(CableSpec section, double lengthMm)
+            {
+                var next = Next();
+                interfaceElements.Add((n2, new CableSegment(cursor, next, section, lengthMm * 1e-3)));
+                cursor = next;
+            }
+
+            if (f1.Id == f2.Id)
+            {
+                // Same family: panel-to-plug is one mated pair; cable-to-cable needs a
+                // double-female barrel, i.e. two mated pairs back to back.
+                bool barrel = n1.Kind == DocumentNodeKind.Cable && n2.Kind == DocumentNodeKind.Cable;
+                AddLump(InterfaceSynthesis.ExcessSpec(f1));
+                AddSection(InterfaceSynthesis.MatedSpec(f1), f1.MatedLengthMm);
+                if (barrel)
+                    AddSection(InterfaceSynthesis.MatedSpec(f1), f1.MatedLengthMm);
+                interfaceNotes.Add($"{n1.Id} ↔ {n2.Id}: {f1.Name} mated pair"
+                    + (barrel ? " ×2 (double-female barrel)" : ""));
+            }
+            else
+            {
+                var adapter = catalog.Adapters.FirstOrDefault(a =>
+                    (a.FamilyA == f1.Id && a.FamilyB == f2.Id)
+                    || (a.FamilyA == f2.Id && a.FamilyB == f1.Id));
+                var body = adapter is null
+                    ? InterfaceSynthesis.GenericBodySpec(f1, f2)
+                    : InterfaceSynthesis.BodySpec(adapter);
+                var lump = adapter is null
+                    ? InterfaceSynthesis.GenericExcessSpec(f1, f2)
+                    : InterfaceSynthesis.ExcessSpec(adapter);
+                double bodyLengthMm = adapter?.LengthMm ?? 25.0;
+
+                AddSection(InterfaceSynthesis.MatedSpec(f1), f1.MatedLengthMm);
+                AddLump(lump);
+                AddSection(body, bodyLengthMm);
+                AddSection(InterfaceSynthesis.MatedSpec(f2), f2.MatedLengthMm);
+                interfaceNotes.Add($"{n1.Id} ↔ {n2.Id}: {f1.Name} → "
+                    + $"{(adapter is null ? body.Name : adapter.Name)} "
+                    + $"({body.Z0Ohms:0.#} Ω · {bodyLengthMm:0.#} mm) → {f2.Name}");
+            }
+
+            remap[(n2.Id, p2)] = cursor;
+        }
+
+        NodeId NetOfFinal(string nodeId, string port)
+            => remap.TryGetValue((nodeId, port), out var mapped) ? mapped : NetOf(nodeId, port);
+
         var tdrs = document.Nodes.Where(n => n.Kind == DocumentNodeKind.Tdr).ToList();
         if (tdrs.Count == 0)
         {
@@ -159,7 +328,8 @@ public static class DocumentCompiler
 
         var instrument = ResolveInstrument(document.Instrument, catalog, issues);
         var noise = ResolveNoise(document.Instrument, catalog, issues);
-        var emitted = EmitElements(document, catalog, NetOf, issues);
+        var emitted = EmitElements(document, catalog, NetOfFinal, issues);
+        emitted.AddRange(interfaceElements);
 
         // Connectivity from the TDR's net: islands are advisory (their elements are
         // omitted), matching how a real bench works - parts not plugged into the
@@ -168,9 +338,9 @@ public static class DocumentCompiler
         var probes = new List<DocumentProbe>();
         if (tdrs.Count == 1)
         {
-            var sourceNet = NetOf(tdrs[0].Id, DocumentPorts.P);
+            var sourceNet = NetOfFinal(tdrs[0].Id, DocumentPorts.P);
             var connected = PartitionByConnectivity(
-                emitted, sourceNet, classIndex.Count, issues, out var reachableNets);
+                emitted, sourceNet, totalNets, issues, out var reachableNets);
             if (!issues.Any(i => i.IsFatal))
             {
                 connected.Insert(0, new SourcePort(sourceNet));
@@ -183,7 +353,7 @@ public static class DocumentCompiler
                         || (node.Kind == DocumentNodeKind.Fault && node.FaultKind == Project.FaultKind.ShuntBridge);
                     if (!isProbeKind)
                         continue;
-                    var net = NetOf(node.Id, DocumentPorts.P);
+                    var net = NetOfFinal(node.Id, DocumentPorts.P);
                     if (reachableNets.Contains(net.Value))
                         probes.Add(new DocumentProbe(node.Id, net));
                 }
@@ -197,6 +367,7 @@ public static class DocumentCompiler
             Instrument = instrument,
             Noise = noise,
             Probes = probes,
+            InterfaceNotes = interfaceNotes,
         };
     }
 

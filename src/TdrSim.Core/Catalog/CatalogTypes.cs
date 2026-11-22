@@ -60,6 +60,78 @@ public sealed record CableSpec
 
     public InsertionLossCoefficients? InsertionLossCoefficients { get; init; }
 
+    /// <summary>The connector family this cable is normally terminated with
+    /// (<see cref="ConnectorFamilySpec.Id"/>), or null for bare ends (screw
+    /// terminals, probed PCB traces, teaching ideals).</summary>
+    public string? DefaultConnector { get; init; }
+
+    public string? Source { get; init; }
+}
+
+/// <summary>
+/// A physical connector interface family (BNC, F, SMA, ...). Where two connectorized
+/// ends meet, the compiler inserts the mated pair as a short line section at
+/// <see cref="MatedZ0Ohms"/> plus residual lumped parasitics - which is why a UHF
+/// joint shows its famous ~35 ohm dip while a mated SMA pair is nearly invisible.
+/// </summary>
+public sealed record ConnectorFamilySpec
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+
+    /// <summary>The system impedance the family is sold for (display/matching).</summary>
+    public required double NominalZ0Ohms { get; init; }
+
+    /// <summary>Impedance through the mated region. Constant-impedance families equal
+    /// their nominal; non-constant ones (UHF, RCA) sag well below it.</summary>
+    public required double MatedZ0Ohms { get; init; }
+
+    /// <summary>Physical length of the mated pair region.</summary>
+    public required double MatedLengthMm { get; init; }
+
+    /// <summary>Velocity factor of the connector body dielectric.</summary>
+    public required double VelocityFactor { get; init; }
+
+    /// <summary>Residual series inductance of the junction (pin/socket transition).</summary>
+    public required double ExcessInductanceNh { get; init; }
+
+    /// <summary>Residual shunt capacitance, split evenly across the two sides.</summary>
+    public required double ExcessCapacitancePf { get; init; }
+
+    /// <summary>Typical mated-pair insertion loss at 1 GHz (scaled as sqrt(f)).</summary>
+    public required double InsertionLossDbAt1Ghz { get; init; }
+
+    /// <summary>Rated usable bandwidth (informational).</summary>
+    public required double MaxFrequencyGhz { get; init; }
+
+    /// <summary>Balanced interfaces (RJ45) cannot be adapted to coax without a balun;
+    /// the compiler refuses to auto-adapt them and flags the joint instead.</summary>
+    public bool Balanced { get; init; }
+
+    public string? Source { get; init; }
+}
+
+/// <summary>
+/// A between-series adapter (F-to-BNC, N-to-SMA, ...): a short body section at
+/// <see cref="Z0Ohms"/> that the compiler splices between the two mated pairs when
+/// differently-connectorized ends meet.
+/// </summary>
+public sealed record AdapterSpec
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+
+    /// <summary>The two <see cref="ConnectorFamilySpec.Id"/>s it joins (unordered).</summary>
+    public required string FamilyA { get; init; }
+    public required string FamilyB { get; init; }
+
+    public required double Z0Ohms { get; init; }
+    public required double LengthMm { get; init; }
+    public required double VelocityFactor { get; init; }
+    public required double ExcessInductanceNh { get; init; }
+    public required double ExcessCapacitancePf { get; init; }
+    public required double InsertionLossDbAt1Ghz { get; init; }
+    public required double MaxFrequencyGhz { get; init; }
     public string? Source { get; init; }
 }
 
@@ -92,6 +164,10 @@ public sealed record InstrumentSpec
     /// class, in mV. Applied automatically; the document can override (0 = off).</summary>
     public double NoiseFloorMillivolts { get; init; }
 
+    /// <summary>The front-panel connector family (<see cref="ConnectorFamilySpec.Id"/>),
+    /// or null for bare terminals. The document can override it.</summary>
+    public string? PortConnector { get; init; }
+
     public string? Source { get; init; }
 }
 
@@ -123,4 +199,10 @@ public sealed record ComponentCatalog
     public required IReadOnlyList<ConnectorSpec> Connectors { get; init; }
     public required IReadOnlyList<InstrumentSpec> Instruments { get; init; }
     public required IReadOnlyList<FaultSpec> Faults { get; init; }
+
+    /// <summary>Optional so hand-built test catalogs keep compiling; empty lists
+    /// simply disable automatic interface insertion.</summary>
+    public IReadOnlyList<ConnectorFamilySpec> ConnectorFamilies { get; init; } = [];
+
+    public IReadOnlyList<AdapterSpec> Adapters { get; init; } = [];
 }

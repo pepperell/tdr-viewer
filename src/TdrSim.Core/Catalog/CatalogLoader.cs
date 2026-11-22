@@ -17,6 +17,9 @@ public static class CatalogLoader
             Connectors = LoadFile("connectors.json", CatalogJsonContext.Default.CatalogFileConnectorSpec).Items,
             Instruments = LoadFile("instruments.json", CatalogJsonContext.Default.CatalogFileInstrumentSpec).Items,
             Faults = LoadFile("faults.json", CatalogJsonContext.Default.CatalogFileFaultSpec).Items,
+            ConnectorFamilies = LoadFile(
+                "connector-families.json", CatalogJsonContext.Default.CatalogFileConnectorFamilySpec).Items,
+            Adapters = LoadFile("adapters.json", CatalogJsonContext.Default.CatalogFileAdapterSpec).Items,
         };
     }
 

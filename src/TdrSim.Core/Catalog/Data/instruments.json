@@ -8,6 +8,7 @@
       "riseTime1090Ps": 23,
       "sourceImpedanceOhms": 50,
       "noiseFloorMillivolts": 0.4,
+      "portConnector": "sma-50",
       "source": "Tektronix 80E04 datasheet: 250 mV into 50 ohm, 23 ps incident; ~400 uV RMS single-sweep noise typical"
     },
     {
@@ -17,6 +18,7 @@
       "riseTime1090Ps": 12,
       "sourceImpedanceOhms": 50,
       "noiseFloorMillivolts": 0.5,
+      "portConnector": "mm185",
       "source": "Tektronix 80E10B datasheet: 250 mV, 12 ps incident; wider bandwidth, slightly higher noise than 80E04"
     },
     {
@@ -26,6 +28,7 @@
       "riseTime1090Ps": 200,
       "sourceImpedanceOhms": 50,
       "noiseFloorMillivolts": 2.0,
+      "portConnector": "bnc-50",
       "source": "Tektronix 1502C datasheet: 300 mV nominal into 50 ohm, 200 ps system; portable-class ~2 mV screen noise"
     },
     {
@@ -35,6 +38,7 @@
       "riseTime1090Ps": 500,
       "sourceImpedanceOhms": 75,
       "noiseFloorMillivolts": 2.5,
+      "portConnector": "f-75",
       "source": "representative 75 ohm instrument"
     },
     {
@@ -44,6 +48,7 @@
       "riseTime1090Ps": 2000,
       "sourceImpedanceOhms": 50,
       "noiseFloorMillivolts": 10.0,
+      "portConnector": "rj45",
       "source": "representative handheld class (datasheets specify pulse width, not rise time); coarse front end"
     }
   ]

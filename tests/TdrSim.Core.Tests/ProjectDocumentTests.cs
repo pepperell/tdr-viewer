@@ -110,9 +110,10 @@ public class ProjectDocumentTests
     [Fact]
     public void NewerSchemaVersionIsRejectedWithAClearMessage()
     {
-        string json = ProjectSerializer.Serialize(FullDocument() with { SchemaVersion = 3 });
+        int future = ProjectDocument.CurrentSchemaVersion + 1;
+        string json = ProjectSerializer.Serialize(FullDocument() with { SchemaVersion = future });
         var e = Assert.Throws<InvalidDataException>(() => ProjectSerializer.Deserialize(json));
-        Assert.Contains("version 3", e.Message);
+        Assert.Contains($"version {future}", e.Message);
     }
 
     [Fact]
@@ -160,8 +161,9 @@ public class ProjectDocumentTests
     {
         // Unmapped members are disallowed so a field from a future schema can't be
         // silently dropped on a load-edit-save round trip.
+        int version = ProjectDocument.CurrentSchemaVersion;
         string json = ProjectSerializer.Serialize(FullDocument())
-            .Replace("\"schemaVersion\": 2,", "\"schemaVersion\": 2, \"futureField\": true,");
+            .Replace($"\"schemaVersion\": {version},", $"\"schemaVersion\": {version}, \"futureField\": true,");
         Assert.Throws<InvalidDataException>(() => ProjectSerializer.Deserialize(json));
     }
 

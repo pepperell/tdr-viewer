@@ -32,6 +32,12 @@ test (224 tests at last count).
   with per-class noise floors.
 - **Faults**: water-ingress / crushed sections (dielectric change at constant L),
   resistive bridges, series faults — all compiled onto exact line models.
+- **Connectors & adapters**: every instrument preset carries its real front-panel
+  interface (BNC on the 1502C, 3.5 mm on the 80E04, 1.85 mm on the 80E10B, F on the
+  CATV meter, RJ45 on the cable tester) and every cable its usual termination; where
+  two connectorized ends meet, the compiler automatically splices in the mated pair —
+  or a between-series adapter on a mismatch — as real transmission-line hardware, with
+  per-end overrides in the inspectors and a toolbar chip listing what was inserted.
 - **Realism**: additive Gaussian noise at the selected instrument's floor with N-sweep
   averaging (σ/√N), settling and grid-resolution warnings.
 - **Workflow**: 15 built-in examples in the menu, schema-versioned `.tdrproj` project
@@ -184,6 +190,31 @@ grid capped at 2^15 (~20 ms warm), then a full-resolution pass after 250 ms of i
 A session cache memoizes each cable model's per-meter Z'(f)/Y'(f) spectra keyed on
 (model, grid) — the arrays are length-independent, so dragging a *length* slider hits
 the cache. Cached and uncached runs are asserted bitwise-identical.
+
+## Connector interfaces
+
+A real measurement never goes straight from sampler to cable: the step crosses the
+instrument's panel jack, possibly an adapter, and the cable's own plug. The compiler
+reproduces that chain wherever a net joins **exactly two** connectorized ends (the
+TDR's panel, a cable end). A matching pair of families becomes one mated pair; two
+cable ends of the same family get a double-female barrel (two mated pairs back to
+back); different coax families get mated pair → adapter body → mated pair. Each mated
+region and adapter body is a short real line section — length, through-impedance,
+velocity factor, √f-shaped loss from published figures — plus a lumped L/C for the
+residual junction parasitics, all with exactly zero DC resistance so settled levels
+and the Σh = Γ(0) identity are untouched.
+
+The catalog values follow the actual interface standards: 50 Ω BNC is a constant-50 Ω
+pair good to ~4 GHz (VSWR ≤ 1.3), the SCTE F interface holds ≥ 20 dB return loss to
+3 GHz, SMA/3.5 mm/2.92 mm intermate as one 50 Ω family to 18 GHz, and 1.85 mm/2.4 mm
+are near-transparent precision air lines. The classic teaching case is the UHF
+connector (PL-259/SO-239): a genuinely **non-constant** interface that sags to ~35 Ω
+over ~14 mm — invisible to a 200 ps portable TDR, an unmistakable dip at a 23 ps lab
+edge. Likewise a 93 Ω RG-62 run with its historically-correct 50 Ω BNCs shows the
+connector dips a real bench sees. Balanced interfaces (RJ45) are never auto-adapted
+to coax — that needs a balun, so the joint is connected ideally and flagged. Junction
+tees and bare ends (screw terminals, probed PCB coupons, the ideal teaching lines)
+stay ideal.
 
 ## Instrument noise
 

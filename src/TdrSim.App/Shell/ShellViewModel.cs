@@ -14,8 +14,9 @@ using TdrSim.Core.Project;
 
 namespace TdrSim.App.Shell;
 
-/// <summary>One toolbar chip per distinct issue kind.</summary>
-public sealed record IssueBadge(string Label, string Tooltip, bool IsFatal);
+/// <summary>One toolbar chip per distinct issue kind, plus an informational chip
+/// listing the automatically inserted connector hardware.</summary>
+public sealed record IssueBadge(string Label, string Tooltip, bool IsFatal, bool IsInfo = false);
 
 public sealed partial class ShellViewModel : ObservableObject
 {
@@ -489,6 +490,15 @@ public sealed partial class ShellViewModel : ObservableObject
                 group.First().IsFatal));
         }
 
+        if (_compilation.InterfaceNotes.Count > 0)
+        {
+            Badges.Add(new IssueBadge(
+                $"connectors ×{_compilation.InterfaceNotes.Count}",
+                string.Join("\n", _compilation.InterfaceNotes),
+                IsFatal: false,
+                IsInfo: true));
+        }
+
         SubmitLive();
         UpdatePulseProbes();
         SchedulePulse();
@@ -596,6 +606,7 @@ public sealed partial class ShellViewModel : ObservableObject
         DocumentIssueKind.InvalidInstrumentValues => "invalid instrument",
         DocumentIssueKind.UnknownPresetId => "unknown preset",
         DocumentIssueKind.InvalidFaultValues => "invalid fault",
+        DocumentIssueKind.UnadaptableInterface => "needs balun",
         _ => kind.ToString(),
     };
 

@@ -17,12 +17,14 @@ public sealed partial class EditorViewModel : ObservableObject
 {
     private readonly ComponentCatalog _catalog;
     private readonly InstrumentViewModel _instrument;
+    private readonly IReadOnlyList<ConnectorChoice> _cableConnectorChoices;
     private int _nextId;
 
     public EditorViewModel(ComponentCatalog catalog, InstrumentViewModel instrument)
     {
         _catalog = catalog;
         _instrument = instrument;
+        _cableConnectorChoices = ConnectorChoices.Build(catalog, "Cable default");
         PendingConnection = new PendingConnectionViewModel(this);
         SelectedNodes.CollectionChanged += (_, _) =>
             SelectedNode = SelectedNodes.Count == 1 ? SelectedNodes[0] : null;
@@ -56,7 +58,7 @@ public sealed partial class EditorViewModel : ObservableObject
         {
             DocumentNodeKind.Tdr => new TdrNodeViewModel(NewId("tdr"), _instrument),
             DocumentNodeKind.Cable => new CableNodeViewModel(
-                NewId("cable"), _catalog.Cables, ((CableSpec)item.Payload!).Id)
+                NewId("cable"), _catalog.Cables, ((CableSpec)item.Payload!).Id, _cableConnectorChoices)
             {
                 // PCB traces are centimeters, not tens of meters.
                 LengthM = ((CableSpec)item.Payload!).Category == "pcb" ? 0.1 : 30,
@@ -187,12 +189,13 @@ public sealed partial class EditorViewModel : ObservableObject
     private NodeViewModelBase CreateFromDocument(DocumentNode docNode) => docNode.Kind switch
     {
         DocumentNodeKind.Tdr => new TdrNodeViewModel(docNode.Id, _instrument),
-        DocumentNodeKind.Cable => new CableNodeViewModel(docNode.Id, _catalog.Cables, docNode.CablePresetId)
-        {
-            LengthM = docNode.LengthM ?? 0,
-            Z0OverrideOhms = docNode.Z0OverrideOhms,
-            VfOverride = docNode.VfOverride,
-        },
+        DocumentNodeKind.Cable => Hydrate(
+            new CableNodeViewModel(docNode.Id, _catalog.Cables, docNode.CablePresetId, _cableConnectorChoices)
+            {
+                LengthM = docNode.LengthM ?? 0,
+                Z0OverrideOhms = docNode.Z0OverrideOhms,
+                VfOverride = docNode.VfOverride,
+            }, docNode),
         DocumentNodeKind.Connector => new ConnectorNodeViewModel(
             docNode.Id, _catalog.Connectors, docNode.ConnectorPresetId),
         DocumentNodeKind.Load => new LoadNodeViewModel(docNode.Id, docNode.LoadKind ?? LoadKind.Open)
@@ -205,6 +208,12 @@ public sealed partial class EditorViewModel : ObservableObject
         DocumentNodeKind.Junction => new JunctionNodeViewModel(docNode.Id),
         _ => throw new InvalidOperationException($"Unknown node kind {docNode.Kind}."),
     };
+
+    private static CableNodeViewModel Hydrate(CableNodeViewModel cable, DocumentNode docNode)
+    {
+        cable.InitConnectors(docNode.ConnectorAId, docNode.ConnectorBId);
+        return cable;
+    }
 
     // ---- plumbing ----
 
@@ -220,6 +229,7 @@ public sealed partial class EditorViewModel : ObservableObject
         if (e.PropertyName is nameof(NodeViewModelBase.IsSelected)
             or nameof(CableNodeViewModel.Title)
             or nameof(CableNodeViewModel.LengthLog)
+            or nameof(CableNodeViewModel.EffectiveConnectorsNote)
             or nameof(LoadNodeViewModel.UsesR)
             or nameof(LoadNodeViewModel.UsesL)
             or nameof(LoadNodeViewModel.UsesC))

@@ -10,4 +10,6 @@ namespace TdrSim.Core.Catalog;
 [JsonSerializable(typeof(CatalogFile<ConnectorSpec>))]
 [JsonSerializable(typeof(CatalogFile<InstrumentSpec>))]
 [JsonSerializable(typeof(CatalogFile<FaultSpec>))]
+[JsonSerializable(typeof(CatalogFile<ConnectorFamilySpec>))]
+[JsonSerializable(typeof(CatalogFile<AdapterSpec>))]
 public sealed partial class CatalogJsonContext : JsonSerializerContext;

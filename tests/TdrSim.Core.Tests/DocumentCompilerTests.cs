@@ -269,12 +269,17 @@ public class DocumentCompilerTests
         var fromDocument = TdrSimulator.Simulate(compilation.Model!, compilation.Instrument!);
         Assert.Equal(SolverPath.Nodal, fromDocument.Solver);
 
-        // The hand-built M2 demo network (what MainWindow.PlotDemoTrace hardcoded).
+        // The hand-built M2 demo network (what MainWindow.PlotDemoTrace hardcoded),
+        // plus the BNC mated pair the compiler now splices at the TDR's front panel
+        // (1502C port is bnc-50, RG-58 defaults to bnc-50).
         var rg58 = BuiltInCatalog.Cables.Single(c => c.Id == "rg58-belden-9201");
+        var bnc = BuiltInCatalog.ConnectorFamilies.Single(f => f.Id == "bnc-50");
         var handBuilt = TdrSimulator.Simulate(
             Network(
                 new SourcePort(N(0)),
-                new CableSegment(N(0), N(1), rg58, 30),
+                new Connector(N(0), N(4), InterfaceSynthesis.ExcessSpec(bnc)),
+                new CableSegment(N(4), N(5), InterfaceSynthesis.MatedSpec(bnc), bnc.MatedLengthMm * 1e-3),
+                new CableSegment(N(5), N(1), rg58, 30),
                 new CableSegment(N(1), N(2), rg58, 10),
                 new CableSegment(N(1), N(3), rg58, 20)),
             Tdr1502C);

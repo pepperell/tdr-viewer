@@ -252,12 +252,13 @@ public class FaultTests
         var first = DocumentCompiler.Compile(document, BuiltInCatalog);
         TdrSimulator.Simulate(first.Model!, first.Instrument!, settings, session);
         int afterFirst = session.SpectrumComputeCount;
-        Assert.Equal(2, afterFirst); // rg58 + the derived section spec
+        // rg58 + the derived section spec + the BNC mated pair at the TDR's panel.
+        Assert.Equal(3, afterFirst);
 
         var second = DocumentCompiler.Compile(document, BuiltInCatalog);
         TdrSimulator.Simulate(second.Model!, second.Instrument!, settings, session);
         Assert.Equal(afterFirst, session.SpectrumComputeCount);
-        Assert.Equal(2, session.ModelComputeCount);
+        Assert.Equal(3, session.ModelComputeCount);
     }
 
     // ---- validation ----

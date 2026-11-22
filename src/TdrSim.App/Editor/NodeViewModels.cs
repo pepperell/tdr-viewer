@@ -65,17 +65,26 @@ public sealed class TdrNodeViewModel : NodeViewModelBase
 public sealed partial class CableNodeViewModel : NodeViewModelBase
 {
     private string? _presetId;
+    private string? _connectorAId;
+    private string? _connectorBId;
 
-    public CableNodeViewModel(string id, IReadOnlyList<CableSpec> presets, string? presetId)
+    public CableNodeViewModel(
+        string id,
+        IReadOnlyList<CableSpec> presets,
+        string? presetId,
+        IReadOnlyList<ConnectorChoice> connectorChoices)
         : base(id)
     {
         Presets = presets;
         _presetId = presetId;
+        ConnectorChoiceList = connectorChoices;
         InputPorts.Add(new PortViewModel(this, DocumentPorts.A));
         OutputPorts.Add(new PortViewModel(this, DocumentPorts.B));
     }
 
     public IReadOnlyList<CableSpec> Presets { get; }
+
+    public IReadOnlyList<ConnectorChoice> ConnectorChoiceList { get; }
 
     /// <summary>Null when the document references a preset missing from the catalog;
     /// the raw id is preserved so saving doesn't silently rewrite the file.</summary>
@@ -89,7 +98,40 @@ public sealed partial class CableNodeViewModel : NodeViewModelBase
             _presetId = value.Id;
             OnPropertyChanged();
             OnPropertyChanged(nameof(Title));
+            OnPropertyChanged(nameof(EffectiveConnectorsNote));
         }
+    }
+
+    public ConnectorChoice? SelectedConnectorA
+    {
+        get => ConnectorChoiceList.FirstOrDefault(c => c.Id == _connectorAId);
+        set => SetConnector(ref _connectorAId, value, nameof(SelectedConnectorA));
+    }
+
+    public ConnectorChoice? SelectedConnectorB
+    {
+        get => ConnectorChoiceList.FirstOrDefault(c => c.Id == _connectorBId);
+        set => SetConnector(ref _connectorBId, value, nameof(SelectedConnectorB));
+    }
+
+    /// <summary>Document hydration path (no change notification needed mid-build).</summary>
+    public void InitConnectors(string? connectorAId, string? connectorBId)
+        => (_connectorAId, _connectorBId) = (connectorAId, connectorBId);
+
+    public string EffectiveConnectorsNote =>
+        $"Fitted: A = {Effective(_connectorAId)}, B = {Effective(_connectorBId)}."
+        + " Mating hardware is added automatically where ends meet.";
+
+    private string Effective(string? overrideId)
+        => ConnectorChoices.EffectiveName(ConnectorChoiceList, overrideId, SelectedPreset?.DefaultConnector);
+
+    private void SetConnector(ref string? field, ConnectorChoice? value, string propertyName)
+    {
+        if (value is null || value.Id == field)
+            return;
+        field = value.Id;
+        OnPropertyChanged(propertyName);
+        OnPropertyChanged(nameof(EffectiveConnectorsNote));
     }
 
     [ObservableProperty]
@@ -120,6 +162,8 @@ public sealed partial class CableNodeViewModel : NodeViewModelBase
         LengthM = LengthM,
         Z0OverrideOhms = Z0OverrideOhms,
         VfOverride = VfOverride,
+        ConnectorAId = _connectorAId,
+        ConnectorBId = _connectorBId,
     };
 }
 

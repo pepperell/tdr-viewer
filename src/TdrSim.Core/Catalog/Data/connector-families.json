@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "bnc-50",
+      "name": "BNC (50 Ω)",
+      "nominalZ0Ohms": 50.0,
+      "matedZ0Ohms": 50.0,
+      "matedLengthMm": 20.0,
+      "velocityFactor": 0.70,
+      "excessInductanceNh": 1.0,
+      "excessCapacitancePf": 0.25,
+      "insertionLossDbAt1Ghz": 0.08,
+      "maxFrequencyGhz": 4.0,
+      "source": "IEC 61169-8; Amphenol RF/Molex: DC-4 GHz optimum, VSWR <= 1.3 at 4 GHz"
+    },
+    {
+      "id": "bnc-75",
+      "name": "BNC (75 Ω)",
+      "nominalZ0Ohms": 75.0,
+      "matedZ0Ohms": 75.0,
+      "matedLengthMm": 20.0,
+      "velocityFactor": 0.70,
+      "excessInductanceNh": 1.2,
+      "excessCapacitancePf": 0.20,
+      "insertionLossDbAt1Ghz": 0.08,
+      "maxFrequencyGhz": 2.0,
+      "source": "IEC 61169-8 75-ohm variant; Molex DC-2 GHz optimum; mates 50-ohm BNC non-destructively"
+    },
+    {
+      "id": "f-75",
+      "name": "F (75 Ω)",
+      "nominalZ0Ohms": 75.0,
+      "matedZ0Ohms": 75.0,
+      "matedLengthMm": 16.0,
+      "velocityFactor": 0.78,
+      "excessInductanceNh": 2.0,
+      "excessCapacitancePf": 0.20,
+      "insertionLossDbAt1Ghz": 0.05,
+      "maxFrequencyGhz": 3.0,
+      "source": "SCTE 02/124 interface; SCTE 04 return-loss method (>= 20 dB to 3 GHz class); male pin is the cable center conductor"
+    },
+    {
+      "id": "n-50",
+      "name": "N (50 Ω)",
+      "nominalZ0Ohms": 50.0,
+      "matedZ0Ohms": 50.0,
+      "matedLengthMm": 30.0,
+      "velocityFactor": 0.75,
+      "excessInductanceNh": 0.6,
+      "excessCapacitancePf": 0.15,
+      "insertionLossDbAt1Ghz": 0.05,
+      "maxFrequencyGhz": 11.0,
+      "source": "MIL-STD-348 type N: DC-11 GHz (18 GHz precision)"
+    },
+    {
+      "id": "sma-50",
+      "name": "SMA / 3.5 mm (50 Ω)",
+      "nominalZ0Ohms": 50.0,
+      "matedZ0Ohms": 50.0,
+      "matedLengthMm": 16.0,
+      "velocityFactor": 0.71,
+      "excessInductanceNh": 0.25,
+      "excessCapacitancePf": 0.06,
+      "insertionLossDbAt1Ghz": 0.06,
+      "maxFrequencyGhz": 18.0,
+      "source": "SMA DC-18 GHz; intermates with 3.5 mm and 2.92 mm (Gore/R&S intermateability notes)"
+    },
+    {
+      "id": "mm185",
+      "name": "1.85 mm / 2.4 mm (50 Ω)",
+      "nominalZ0Ohms": 50.0,
+      "matedZ0Ohms": 50.0,
+      "matedLengthMm": 12.0,
+      "velocityFactor": 0.90,
+      "excessInductanceNh": 0.05,
+      "excessCapacitancePf": 0.01,
+      "insertionLossDbAt1Ghz": 0.03,
+      "maxFrequencyGhz": 50.0,
+      "source": "Precision air-dielectric interfaces; 2.4 mm DC-50 GHz, intermates 1.85 mm (Tek 80E10B input is 1.85 mm female)"
+    },
+    {
+      "id": "uhf",
+      "name": "UHF (PL-259/SO-239)",
+      "nominalZ0Ohms": 50.0,
+      "matedZ0Ohms": 35.0,
+      "matedLengthMm": 14.0,
+      "velocityFactor": 0.66,
+      "excessInductanceNh": 2.0,
+      "excessCapacitancePf": 1.0,
+      "insertionLossDbAt1Ghz": 0.15,
+      "maxFrequencyGhz": 0.3,
+      "source": "Non-constant impedance: ~35 ohm over ~13 mm concentrated in the SO-239 (W0QE compensation study); Amphenol DC-300 MHz"
+    },
+    {
+      "id": "rca",
+      "name": "RCA phono",
+      "nominalZ0Ohms": 40.0,
+      "matedZ0Ohms": 30.0,
+      "matedLengthMm": 12.0,
+      "velocityFactor": 0.60,
+      "excessInductanceNh": 3.0,
+      "excessCapacitancePf": 1.5,
+      "insertionLossDbAt1Ghz": 0.20,
+      "maxFrequencyGhz": 0.1,
+      "source": "Uncontrolled-impedance consumer interface (~25-40 ohm through the body)"
+    },
+    {
+      "id": "rj45",
+      "name": "RJ45 (8P8C modular)",
+      "nominalZ0Ohms": 100.0,
+      "matedZ0Ohms": 85.0,
+      "matedLengthMm": 12.0,
+      "velocityFactor": 0.60,
+      "excessInductanceNh": 2.0,
+      "excessCapacitancePf": 0.75,
+      "insertionLossDbAt1Ghz": 0.10,
+      "maxFrequencyGhz": 0.6,
+      "balanced": true,
+      "source": "TIA-568 modular plug region: untwisted pairs dip below 100 ohm; the usual bandwidth limiter of a Cat run"
+    }
+  ]
+}

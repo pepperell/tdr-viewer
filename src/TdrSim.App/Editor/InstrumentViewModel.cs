@@ -9,11 +9,13 @@ namespace TdrSim.App.Editor;
 public sealed partial class InstrumentViewModel : ObservableObject
 {
     private string _presetId;
+    private string? _portConnectorId;
 
     public InstrumentViewModel(ComponentCatalog catalog)
     {
         Presets = catalog.Instruments;
         _presetId = DefaultPresetId(catalog);
+        ConnectorChoiceList = ConnectorChoices.Build(catalog, "Preset default");
     }
 
     public static string DefaultPresetId(ComponentCatalog catalog)
@@ -34,8 +36,28 @@ public sealed partial class InstrumentViewModel : ObservableObject
             OnPropertyChanged();
             OnPropertyChanged(nameof(EffectiveRiseTimePs));
             OnPropertyChanged(nameof(RiseTimeLog));
+            OnPropertyChanged(nameof(EffectivePortConnectorNote));
         }
     }
+
+    public IReadOnlyList<ConnectorChoice> ConnectorChoiceList { get; }
+
+    public ConnectorChoice? SelectedPortConnector
+    {
+        get => ConnectorChoiceList.FirstOrDefault(c => c.Id == _portConnectorId);
+        set
+        {
+            if (value is null || value.Id == _portConnectorId)
+                return;
+            _portConnectorId = value.Id;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(EffectivePortConnectorNote));
+        }
+    }
+
+    public string EffectivePortConnectorNote =>
+        $"Front panel: {ConnectorChoices.EffectiveName(ConnectorChoiceList, _portConnectorId, SelectedPreset?.PortConnector)}."
+        + " The panel-to-cable mate (and any adapter) is inserted automatically.";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(EffectiveRiseTimePs))]
@@ -78,6 +100,7 @@ public sealed partial class InstrumentViewModel : ObservableObject
         SourceImpedanceOverrideOhms = SourceImpedanceOverrideOhms,
         NoiseRmsMillivolts = NoiseRmsMillivolts,
         AveragingSweeps = AveragingSweeps == 1 ? null : AveragingSweeps,
+        PortConnectorId = _portConnectorId,
     };
 
     public void LoadDocument(InstrumentDocument document)
@@ -89,5 +112,8 @@ public sealed partial class InstrumentViewModel : ObservableObject
         SourceImpedanceOverrideOhms = document.SourceImpedanceOverrideOhms;
         NoiseRmsMillivolts = document.NoiseRmsMillivolts;
         AveragingSweeps = document.AveragingSweeps ?? 1;
+        _portConnectorId = document.PortConnectorId;
+        OnPropertyChanged(nameof(SelectedPortConnector));
+        OnPropertyChanged(nameof(EffectivePortConnectorNote));
     }
 }
