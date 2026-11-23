@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 4,
+  "instrument": {
+    "presetId": "tek-80e04"
+  },
+  "nodes": [
+    {
+      "id": "tdr",
+      "kind": "Tdr",
+      "x": 40,
+      "y": 200
+    },
+    {
+      "id": "feed",
+      "kind": "Cable",
+      "x": 233,
+      "y": 199,
+      "cablePresetId": "rg316",
+      "lengthM": 1
+    },
+    {
+      "id": "cable-2",
+      "kind": "Cable",
+      "x": 499,
+      "y": 201,
+      "cablePresetId": "fr4-microstrip-50",
+      "lengthM": 0.05,
+      "connectorAId": "none",
+      "connectorBId": "none"
+    },
+    {
+      "id": "cable-3",
+      "kind": "Cable",
+      "x": 781,
+      "y": 209,
+      "cablePresetId": "fr4-microstrip-50",
+      "lengthM": 0.05,
+      "connectorAId": "none",
+      "connectorBId": "none"
+    },
+    {
+      "id": "load-5",
+      "kind": "Load",
+      "x": 1064,
+      "y": 209,
+      "loadKind": "Resistor",
+      "rOhms": 47
+    },
+    {
+      "id": "cable-6",
+      "kind": "Cable",
+      "x": 789,
+      "y": 104,
+      "cablePresetId": "fr4-microstrip-50",
+      "lengthM": 0.01,
+      "connectorAId": "none",
+      "connectorBId": "none"
+    }
+  ],
+  "wires": [
+    {
+      "fromNodeId": "tdr",
+      "fromPort": "P",
+      "toNodeId": "feed",
+      "toPort": "A"
+    },
+    {
+      "fromNodeId": "feed",
+      "fromPort": "B",
+      "toNodeId": "cable-2",
+      "toPort": "A"
+    },
+    {
+      "fromNodeId": "cable-2",
+      "fromPort": "B",
+      "toNodeId": "cable-3",
+      "toPort": "A"
+    },
+    {
+      "fromNodeId": "cable-3",
+      "fromPort": "B",
+      "toNodeId": "load-5",
+      "toPort": "P"
+    },
+    {
+      "fromNodeId": "cable-2",
+      "fromPort": "B",
+      "toNodeId": "cable-6",
+      "toPort": "A"
+    }
+  ]
+}
