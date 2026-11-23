@@ -9,6 +9,8 @@ public sealed record ExampleProject(string Name, string Description, ProjectDocu
 /// Curated example documents, one per teaching point - opens, mismatches, reactive
 /// discontinuities, faults, loops, instruments. Built in code against the built-in
 /// catalog ids; a test asserts every one compiles with zero issues and simulates.
+/// Open ends are simply left unwired: an unwired end of a live cable is an assumed
+/// open, so no example carries an Open load node.
 /// </summary>
 public static class ExampleProjects
 {
@@ -23,7 +25,7 @@ public static class ExampleProjects
     [
         new("Open-ended cable",
             "50 m of RG-58 with nothing at the end: full reflection, skin-effect edge slur and 1/√t creep.",
-            Chain("tek-1502c", Cable("c1", Rg58, 50), Open("end"))),
+            Chain("tek-1502c", Cable("c1", Rg58, 50))),
 
         new("Matched termination",
             "RG-58 into its own 52 Ω: the flattest trace a lossy line allows (watch the resistive creep).",
@@ -75,11 +77,11 @@ public static class ExampleProjects
 
         new("Twisted pair, handheld tester",
             "60 m of Cat5e on a 2 ns handheld: the 50 → 100 Ω step at the front, then the open far end.",
-            Chain("cable-tester", Cable("c1", Cat5E, 60), Open("end"))),
+            Chain("cable-tester", Cable("c1", Cat5E, 60))),
 
         new("Fast lab TDR, 2 m patch",
-            "23 ps edge through a BNC barrel into 2 m of RG-174: connector parasitics become visible.",
-            Chain("tek-80e04", Connector("bnc", "bnc-barrel"), Cable("c1", Rg174, 2), Open("end"))),
+            "23 ps edge into 2 m of RG-174: the front-panel connector's parasitics become visible.",
+            Chain("tek-80e04", Cable("c1", Rg174, 2))),
 
         new("Noisy sweep with averaging",
             "The tee with 2 mV RMS noise averaged over 4 sweeps - crank the averaging to clean it up.",
@@ -98,9 +100,6 @@ public static class ExampleProjects
 
     private static DocumentNode Resistor(string id, double rOhms, double x = 0, double y = 200)
         => new() { Id = id, Kind = DocumentNodeKind.Load, LoadKind = LoadKind.Resistor, ROhms = rOhms, X = x, Y = y };
-
-    private static DocumentNode Open(string id, double x = 0, double y = 200)
-        => Load(id, LoadKind.Open, x, y);
 
     private static DocumentNode Load(string id, LoadKind kind, double x = 0, double y = 200)
         => new() { Id = id, Kind = DocumentNodeKind.Load, LoadKind = kind, X = x, Y = y };
@@ -128,8 +127,8 @@ public static class ExampleProjects
         Wires = wires,
     };
 
-    /// <summary>TDR followed by two-ports in order, ending in a one-port; nodes are
-    /// laid out left to right and wired A-to-B down the line.</summary>
+    /// <summary>TDR followed by two-ports in order, optionally ending in a one-port
+    /// (none = open end); nodes are laid out left to right and wired A-to-B down the line.</summary>
     private static ProjectDocument Chain(string instrumentPreset, params DocumentNode[] elements)
     {
         var nodes = new List<DocumentNode> { Tdr() };
@@ -175,15 +174,11 @@ public static class ExampleProjects
             Cable("feed", Rg58, 30, 270),
             Cable("stub", Rg58, 10, 540, 90),
             Cable("tail", Rg58, 20, 540, 310),
-            Open("stubEnd", 790, 90),
-            Open("tailEnd", 790, 310),
         ],
         [
             W("tdr", "P", "feed", "A"),
             W("feed", "B", "stub", "A"),
             W("feed", "B", "tail", "A"),
-            W("stub", "B", "stubEnd", "P"),
-            W("tail", "B", "tailEnd", "P"),
         ],
         noiseRmsMv: noise ? 2 : null,
         averagingSweeps: noise ? 4 : null);
@@ -194,14 +189,12 @@ public static class ExampleProjects
             Cable("drop", Rg6, 40, 270),
             Cable("tap", Rg6, 15, 540, 80),
             Cable("trunk", Rg6, 40, 540, 320),
-            Open("tapEnd", 790, 80),
             Resistor("term", 75, 790, 320),
         ],
         [
             W("tdr", "P", "drop", "A"),
             W("drop", "B", "tap", "A"),
             W("drop", "B", "trunk", "A"),
-            W("tap", "B", "tapEnd", "P"),
             W("trunk", "B", "term", "P"),
         ]);
 
@@ -234,13 +227,11 @@ public static class ExampleProjects
                 LengthM = 2, Z0Scale = 0.7, ExtraDielectricLossDbPer100m = 3, X = 500, Y = 200,
             },
             Cable("tail", Rg58, 20, 730),
-            Open("end", 960),
         ],
         [
             W("tdr", "P", "feed", "A"),
             W("feed", "B", "wet", "A"),
             W("wet", "B", "tail", "A"),
-            W("tail", "B", "end", "P"),
         ]);
 
     private static ProjectDocument SeriesFault() => Doc("tek-1502c",

@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -25,6 +27,32 @@ public partial class MainWindow : Window
         // each mutation, once layout has settled.
         _shell.Editor.GraphChanged += (_, _) => ScheduleAnchorRefresh();
         Loaded += (_, _) => ScheduleAnchorRefresh();
+
+        // Starting up, opening a file or an example: bring the network into view.
+        _shell.DocumentLoaded += ScheduleAutoCenter;
+        Loaded += (_, _) => ScheduleAutoCenter();
+    }
+
+    /// <summary>Center the network once the new nodes have been laid out. Zooms out to
+    /// fit a big network but never in past 100 %, so a lone TDR does not fill the canvas.</summary>
+    private void ScheduleAutoCenter()
+    {
+        Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, () =>
+        {
+            if (!IsLoaded || EditorCanvas.ActualWidth <= 0)
+                return;
+            EditorCanvas.FitToScreen();
+            if (EditorCanvas.ViewportZoom > 1)
+            {
+                var extent = EditorCanvas.ItemsExtent;
+                EditorCanvas.ViewportZoom = 1;
+                EditorCanvas.ViewportLocation = new Point(
+                    extent.X + extent.Width / 2 - EditorCanvas.ActualWidth / 2,
+                    extent.Y + extent.Height / 2 - EditorCanvas.ActualHeight / 2);
+            }
+
+            ScheduleAnchorRefresh();
+        });
     }
 
     private void ScheduleAnchorRefresh()
@@ -68,33 +96,107 @@ public partial class MainWindow : Window
         _shell.Shutdown();
     }
 
-    private void OnPaletteItemMouseMove(object sender, MouseEventArgs e)
+    // Canvas hover -> trace shading. A press clears it so a node being dragged (or a
+    // wire being drawn from it) does not strobe the plot; it returns on re-entry.
+    private void OnNodeMouseEnter(object sender, MouseEventArgs e)
     {
-        if (e.LeftButton != MouseButtonState.Pressed)
-            return;
-        if (sender is not FrameworkElement { DataContext: PaletteItem { IsEnabled: true } item } element)
-            return;
-        DragDrop.DoDragDrop(element, new DataObject(typeof(PaletteItem), item), DragDropEffects.Copy);
+        if (e.LeftButton == MouseButtonState.Released
+            && sender is FrameworkElement { DataContext: NodeViewModelBase node })
+        {
+            _shell.Editor.HoveredNode = node;
+        }
     }
 
-    private void OnEditorDragOver(object sender, DragEventArgs e)
+    private void OnNodeMouseLeave(object sender, MouseEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(typeof(PaletteItem))
-            ? DragDropEffects.Copy
-            : DragDropEffects.None;
+        if (sender is FrameworkElement { DataContext: NodeViewModelBase node }
+            && ReferenceEquals(_shell.Editor.HoveredNode, node))
+        {
+            _shell.Editor.HoveredNode = null;
+        }
+    }
+
+    private void OnNodeMouseDown(object sender, MouseButtonEventArgs e)
+        => _shell.Editor.HoveredNode = null;
+
+    private void OnCustomCablesClick(object sender, RoutedEventArgs e) => ShowCustomCables(null);
+
+    private void OnEditCustomCableClick(object sender, RoutedEventArgs e)
+        => ShowCustomCables((sender as FrameworkElement)?.DataContext is CableNodeViewModel cable
+            ? cable.PresetId
+            : null);
+
+    /// <summary>The custom-cable manager; accepting it is one undoable document edit.</summary>
+    private void ShowCustomCables(string? selectId)
+    {
+        var viewModel = _shell.Editor.CreateCustomCablesViewModel(selectId);
+        var dialog = new CustomCablesDialog { Owner = this, DataContext = viewModel };
+        if (dialog.ShowDialog() == true)
+            _shell.Editor.SetCustomCables(viewModel.Result());
+    }
+
+    // ---- component bar ----
+
+    /// <summary>A square of the component bar: drop its list down, add its one
+    /// component, or open the cable manager.</summary>
+    private void OnPaletteButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: PaletteButton button } element)
+            return;
+        switch (button.Action)
+        {
+            case PaletteAction.CableManager:
+                ShowCustomCables(null);
+                break;
+            case PaletteAction.Add when button.DirectItem is { } item:
+                AddAtViewCentre(item);
+                break;
+            case PaletteAction.Menu:
+                OpenPaletteMenu(element, button);
+                break;
+        }
+    }
+
+    /// <summary>Right-click (or the menu key) opens the same list in the same place as a
+    /// click; a button without a list has nothing to show.</summary>
+    private void OnPaletteContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
         e.Handled = true;
+        if (sender is Button { DataContext: PaletteButton { Action: PaletteAction.Menu } button } element)
+            OpenPaletteMenu(element, button);
     }
 
-    private void OnEditorDrop(object sender, DragEventArgs e)
+    private static void OpenPaletteMenu(Button element, PaletteButton button)
     {
-        if (e.Data.GetData(typeof(PaletteItem)) is not PaletteItem item)
+        if (element.ContextMenu is not { } menu || button.Entries.Count == 0)
             return;
-
-        // Mouse position -> graph coordinates through the viewport transform.
-        var mouse = e.GetPosition(EditorCanvas);
-        var graph = new Point(
-            EditorCanvas.ViewportLocation.X + mouse.X / EditorCanvas.ViewportZoom,
-            EditorCanvas.ViewportLocation.Y + mouse.Y / EditorCanvas.ViewportZoom);
-        _shell.Editor.AddFromPalette(item, graph);
+        menu.PlacementTarget = element;
+        menu.Placement = PlacementMode.Bottom;
+        menu.IsOpen = true;
     }
+
+    private void OnPaletteMenuItemClick(object sender, RoutedEventArgs e)
+    {
+        if (e.OriginalSource is MenuItem { DataContext: PaletteItem item })
+            AddAtViewCentre(item);
+    }
+
+    /// <summary>New components land in the middle of what the canvas is showing (graph
+    /// coordinates, less roughly half a node so the node itself looks centred).</summary>
+    private void AddAtViewCentre(PaletteItem item)
+    {
+        var centre = new Point(
+            EditorCanvas.ViewportLocation.X + EditorCanvas.ViewportSize.Width / 2 - 70,
+            EditorCanvas.ViewportLocation.Y + EditorCanvas.ViewportSize.Height / 2 - 30);
+        _shell.Editor.AddFromPalette(item, centre);
+        EditorCanvas.Focus();
+    }
+
+    // ---- one-touch view controls ----
+
+    private void OnCenterViewClick(object sender, RoutedEventArgs e) => EditorCanvas.FitToScreen();
+
+    private void OnZoomInClick(object sender, RoutedEventArgs e) => EditorCanvas.ZoomIn();
+
+    private void OnZoomOutClick(object sender, RoutedEventArgs e) => EditorCanvas.ZoomOut();
 }

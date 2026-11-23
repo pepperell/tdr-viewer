@@ -18,6 +18,8 @@ public sealed partial class EditorViewModel : ObservableObject
     private readonly ComponentCatalog _catalog;
     private readonly InstrumentViewModel _instrument;
     private readonly IReadOnlyList<ConnectorChoice> _cableConnectorChoices;
+    private List<CableSpec> _customCables = [];
+    private bool _suppressGraphChanged;
     private int _nextId;
 
     public EditorViewModel(ComponentCatalog catalog, InstrumentViewModel instrument)
@@ -25,6 +27,7 @@ public sealed partial class EditorViewModel : ObservableObject
         _catalog = catalog;
         _instrument = instrument;
         _cableConnectorChoices = ConnectorChoices.Build(catalog);
+        Cables = [.. catalog.Cables];
         PendingConnection = new PendingConnectionViewModel(this);
         SelectedNodes.CollectionChanged += (_, _) =>
             SelectedNode = SelectedNodes.Count == 1 ? SelectedNodes[0] : null;
@@ -38,8 +41,74 @@ public sealed partial class EditorViewModel : ObservableObject
 
     public PendingConnectionViewModel PendingConnection { get; }
 
+    /// <summary>Every cable a node can reference: the catalog presets followed by the
+    /// document's user-defined cables. Live, so preset combos follow edits.</summary>
+    public ObservableCollection<CableSpec> Cables { get; }
+
+    /// <summary>The document's user-defined cables (schema v4).</summary>
+    public IReadOnlyList<CableSpec> CustomCables => _customCables;
+
+    public event EventHandler? CustomCablesChanged;
+
+    /// <summary>State for the custom-cable manager dialog, optionally opened on one cable.</summary>
+    public CustomCablesViewModel CreateCustomCablesViewModel(string? selectId = null)
+    {
+        var inUse = Nodes.Select(n => n.ToDocumentNode().CablePresetId)
+            .Where(id => id is not null)
+            .Select(id => id!)
+            .ToHashSet(StringComparer.Ordinal);
+        return new CustomCablesViewModel(
+            _customCables, _catalog.Cables, _cableConnectorChoices, inUse, selectId);
+    }
+
+    /// <summary>Replace the user-defined cables (the dialog's OK). Unchanged entries
+    /// must be passed back as the same instances so the engine caches keep hitting.</summary>
+    public void SetCustomCables(IReadOnlyList<CableSpec> cables)
+    {
+        if (cables.Count == _customCables.Count
+            && cables.Zip(_customCables).All(pair => ReferenceEquals(pair.First, pair.Second)))
+        {
+            return;
+        }
+
+        ApplyCustomCables(cables);
+        RaiseGraphChanged();
+    }
+
+    private void ApplyCustomCables(IReadOnlyList<CableSpec> cables)
+    {
+        _customCables = [.. cables];
+        while (Cables.Count > _catalog.Cables.Count)
+            Cables.RemoveAt(Cables.Count - 1);
+        foreach (var cable in _customCables)
+            Cables.Add(cable);
+
+        // The combos lost their selection when the list changed; the nodes still hold
+        // the ids, so re-announce them (as one mutation, not one per node).
+        _suppressGraphChanged = true;
+        try
+        {
+            foreach (var node in Nodes)
+            {
+                (node as CableNodeViewModel)?.RefreshPreset();
+                (node as FaultNodeViewModel)?.RefreshPreset();
+            }
+        }
+        finally
+        {
+            _suppressGraphChanged = false;
+        }
+
+        CustomCablesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     [ObservableProperty]
     private NodeViewModelBase? _selectedNode;
+
+    /// <summary>The node under the mouse on the canvas (set by the view); its stretch
+    /// of the trace is shaded. Cleared when it is deleted or a drag starts.</summary>
+    [ObservableProperty]
+    private NodeViewModelBase? _hoveredNode;
 
     /// <summary>Raised on any mutation that changes what ToDocument would return
     /// (structure, values, or positions) - the shell recompiles badges and sets dirty.</summary>
@@ -49,16 +118,22 @@ public sealed partial class EditorViewModel : ObservableObject
 
     // ---- graph mutations ----
 
+    /// <summary>Add a component chosen on the component bar. It lands at
+    /// <paramref name="location"/> (the view passes the centre of the visible canvas),
+    /// stepping down-right past anything already sitting there, and becomes the selection.</summary>
     public void AddFromPalette(PaletteItem item, Point location)
     {
-        if (item.Kind == DocumentNodeKind.Tdr && HasTdr)
-            return;
+        const double Step = 30;
+        while (Nodes.Any(n => Math.Abs(n.Location.X - location.X) < Step / 2
+                              && Math.Abs(n.Location.Y - location.Y) < Step / 2))
+        {
+            location.Offset(Step, Step);
+        }
 
         NodeViewModelBase node = item.Kind switch
         {
-            DocumentNodeKind.Tdr => new TdrNodeViewModel(NewId("tdr"), _instrument),
             DocumentNodeKind.Cable => new CableNodeViewModel(
-                NewId("cable"), _catalog.Cables, ((CableSpec)item.Payload!).Id, _cableConnectorChoices)
+                NewId("cable"), Cables, ((CableSpec)item.Payload!).Id, _cableConnectorChoices)
             {
                 // PCB traces are centimeters, not tens of meters.
                 LengthM = ((CableSpec)item.Payload!).Category == "pcb" ? 0.1 : 30,
@@ -68,13 +143,14 @@ public sealed partial class EditorViewModel : ObservableObject
             DocumentNodeKind.Load => LoadNodeViewModel.CreateWithDefaults(
                 NewId("load"), (LoadKind)item.Payload!),
             DocumentNodeKind.Fault => FaultNodeViewModel.CreateFromPreset(
-                NewId("fault"), (FaultSpec)item.Payload!, _catalog.Cables),
+                NewId("fault"), (FaultSpec)item.Payload!, Cables),
             DocumentNodeKind.Junction => new JunctionNodeViewModel(NewId("junction")),
             _ => throw new InvalidOperationException($"Unknown palette kind {item.Kind}."),
         };
         node.Location = location;
         AttachNode(node);
-        OnPropertyChanged(nameof(HasTdr));
+        SelectedNodes.Clear();
+        SelectedNodes.Add(node);
         RaiseGraphChanged();
     }
 
@@ -131,9 +207,11 @@ public sealed partial class EditorViewModel : ObservableObject
     [RelayCommand]
     private void DeleteSelection()
     {
-        if (SelectedNodes.Count == 0)
+        // The instrument is part of every project: it is never deleted, and stays selected.
+        var doomed = SelectedNodes.Where(n => n is not TdrNodeViewModel).ToList();
+        if (doomed.Count == 0)
             return;
-        foreach (var node in SelectedNodes.ToList())
+        foreach (var node in doomed)
         {
             foreach (var connection in Connections
                 .Where(c => c.Source.Owner == node || c.Target.Owner == node).ToList())
@@ -143,9 +221,11 @@ public sealed partial class EditorViewModel : ObservableObject
 
             node.PropertyChanged -= OnNodePropertyChanged;
             Nodes.Remove(node);
+            if (ReferenceEquals(HoveredNode, node))
+                HoveredNode = null;
+            SelectedNodes.Remove(node);
         }
 
-        SelectedNodes.Clear();
         RefreshPortStates();
         OnPropertyChanged(nameof(HasTdr));
         RaiseGraphChanged();
@@ -165,15 +245,18 @@ public sealed partial class EditorViewModel : ObservableObject
             ToNodeId = c.Target.Owner.Id,
             ToPort = c.Target.Name,
         }).ToList(),
+        CustomCables = _customCables.Count == 0 ? null : [.. _customCables],
     };
 
     public void LoadDocument(ProjectDocument document)
     {
         foreach (var node in Nodes)
             node.PropertyChanged -= OnNodePropertyChanged;
+        HoveredNode = null;
         SelectedNodes.Clear();
         Connections.Clear();
         Nodes.Clear();
+        ApplyCustomCables(document.CustomCables ?? []);
 
         var ports = new Dictionary<(string Node, string Port), PortViewModel>();
         foreach (var docNode in document.Nodes)
@@ -183,6 +266,19 @@ public sealed partial class EditorViewModel : ObservableObject
             AttachNode(node);
             foreach (var port in node.Ports)
                 ports[(node.Id, port.Name)] = port;
+        }
+
+        // Every project has its instrument. A file saved without one (older versions
+        // let it be deleted) gets it back, clear of the other nodes.
+        if (!HasTdr)
+        {
+            var tdr = new TdrNodeViewModel(NewId("tdr"), _instrument)
+            {
+                Location = Nodes.Count == 0
+                    ? new Point(60, 200)
+                    : new Point(Nodes.Min(n => n.Location.X) - 220, Nodes.Min(n => n.Location.Y)),
+            };
+            AttachNode(tdr);
         }
 
         foreach (var wire in document.Wires)
@@ -203,7 +299,7 @@ public sealed partial class EditorViewModel : ObservableObject
     {
         DocumentNodeKind.Tdr => new TdrNodeViewModel(docNode.Id, _instrument),
         DocumentNodeKind.Cable => Hydrate(
-            new CableNodeViewModel(docNode.Id, _catalog.Cables, docNode.CablePresetId, _cableConnectorChoices)
+            new CableNodeViewModel(docNode.Id, Cables, docNode.CablePresetId, _cableConnectorChoices)
             {
                 LengthM = docNode.LengthM ?? 0,
                 Z0OverrideOhms = docNode.Z0OverrideOhms,
@@ -217,7 +313,7 @@ public sealed partial class EditorViewModel : ObservableObject
             LNanohenries = docNode.LHenries * 1e9,
             CPicofarads = docNode.CFarads * 1e12,
         },
-        DocumentNodeKind.Fault => FaultNodeViewModel.FromDocument(docNode, _catalog),
+        DocumentNodeKind.Fault => FaultNodeViewModel.FromDocument(docNode, _catalog, Cables),
         DocumentNodeKind.Junction => new JunctionNodeViewModel(docNode.Id),
         _ => throw new InvalidOperationException($"Unknown node kind {docNode.Kind}."),
     };
@@ -242,6 +338,7 @@ public sealed partial class EditorViewModel : ObservableObject
         // Slider companions (Z0Log, RLog, ...) mirror the stored fields, which raise
         // their own notifications - skipping them here avoids duplicate recompiles.
         if (e.PropertyName is nameof(NodeViewModelBase.IsSelected)
+            or nameof(NodeViewModelBase.IsTraceHighlighted)
             or nameof(CableNodeViewModel.Title)
             or nameof(CableNodeViewModel.LengthLog)
             or nameof(CableNodeViewModel.Z0Log)
@@ -249,6 +346,7 @@ public sealed partial class EditorViewModel : ObservableObject
             or nameof(CableNodeViewModel.Z0DefaultNote)
             or nameof(CableNodeViewModel.VfDefaultNote)
             or nameof(CableNodeViewModel.ConnectorDefaultNote)
+            or nameof(CableNodeViewModel.IsCustomPreset)
             or nameof(LoadNodeViewModel.RLog)
             or nameof(LoadNodeViewModel.LLog)
             or nameof(LoadNodeViewModel.CLog)
@@ -280,7 +378,11 @@ public sealed partial class EditorViewModel : ObservableObject
         }
     }
 
-    private void RaiseGraphChanged() => GraphChanged?.Invoke(this, EventArgs.Empty);
+    private void RaiseGraphChanged()
+    {
+        if (!_suppressGraphChanged)
+            GraphChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     private string NewId(string prefix)
     {

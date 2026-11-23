@@ -124,7 +124,9 @@ public static class CatalogValidator
         return errors;
     }
 
-    private static void ValidateCable(List<string> errors, CableSpec cable)
+    /// <summary>Catalog cables must carry loss data; user-defined ones may be lossless
+    /// or carry raw line constants instead.</summary>
+    internal static void ValidateCable(List<string> errors, CableSpec cable, bool requireLossData = true)
     {
         if (!CableCategories.Contains(cable.Category))
             errors.Add($"cable '{cable.Id}': unknown category '{cable.Category}'");
@@ -138,7 +140,7 @@ public static class CatalogValidator
             errors.Add($"cable '{cable.Id}': negative DC resistance");
         if (cable.DielectricConstant is < 1)
             errors.Add($"cable '{cable.Id}': dielectricConstant must be >= 1");
-        if (cable.Attenuation is null && cable.InsertionLossCoefficients is null)
+        if (requireLossData && cable.Attenuation is null && cable.InsertionLossCoefficients is null)
             errors.Add($"cable '{cable.Id}': needs attenuation table or insertion-loss coefficients");
 
         if (cable.Attenuation is { } att)

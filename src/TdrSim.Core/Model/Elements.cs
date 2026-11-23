@@ -23,3 +23,8 @@ public sealed record Load(
     double? ROhms = null,
     double? LHenries = null,
     double? CFarads = null) : Element;
+
+/// <summary>Which editor/document node an engine element came from. <see cref="IsInterface"/>
+/// marks hardware the document compiler inserted automatically (mated pairs, adapters)
+/// on behalf of that node's cable end.</summary>
+public sealed record ElementOrigin(string NodeId, bool IsInterface);

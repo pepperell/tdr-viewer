@@ -82,10 +82,63 @@ public sealed partial class PulseViewModel : ObservableObject
     /// <summary>A new waveform arrived - the view replots (always re-fitted).</summary>
     public event Action? WaveformChanged;
 
-    public void SetTrace(PulseTrace trace, double noiseRmsVolts)
+    /// <summary>Seed of the displayed noise: the shell re-rolls it at the sweep rate
+    /// in normal mode and holds it in one-shot mode.</summary>
+    public int NoiseSeed { get; private set; }
+
+    private PlotTheme _theme = PlotTheme.Default;
+
+    /// <summary>Plot colours - the selected instrument's own screen.</summary>
+    public PlotTheme Theme
     {
+        get => _theme;
+        set
+        {
+            if (_theme == value)
+                return;
+            _theme = value;
+            WaveformChanged?.Invoke();
+        }
+    }
+
+    /// <summary>What is under the mouse: time and voltage (bottom bar, left).</summary>
+    [ObservableProperty]
+    private string _hoverReadout = "";
+
+    /// <summary>Levels of the noise-free waveform over one period (bottom bar, right).</summary>
+    [ObservableProperty]
+    private string _stats = "";
+
+    public void SetTrace(PulseTrace trace, double noiseRmsVolts, int noiseSeed)
+    {
+        double min = double.PositiveInfinity;
+        double max = double.NegativeInfinity;
+        double sum = 0;
+        foreach (double v in trace.Volts)
+        {
+            min = Math.Min(min, v);
+            max = Math.Max(max, v);
+            sum += v;
+        }
+
+        Stats = trace.Volts.Length == 0
+            ? ""
+            : $"min {UnitScale.FormatVoltage(min)}  ·  max {UnitScale.FormatVoltage(max)}"
+              + $"  ·  pk-pk {UnitScale.FormatVoltage(max - min)}"
+              + $"  ·  mean {UnitScale.FormatVoltage(sum / trace.Volts.Length)}"
+              + $"  ·  period {UnitScale.FormatTime(trace.PeriodS)}";
         Trace = trace;
         NoiseRmsVolts = noiseRmsVolts;
+        NoiseSeed = noiseSeed;
+        WaveformChanged?.Invoke();
+    }
+
+    /// <summary>Same waveform, a fresh acquisition's noise.</summary>
+    public void SetNoiseSeed(int noiseSeed)
+    {
+        if (Trace is null || NoiseRmsVolts <= 0)
+            return;
+        NoiseSeed = noiseSeed;
         WaveformChanged?.Invoke();
     }
 

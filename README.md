@@ -12,12 +12,15 @@ amplitudes and timing, skin-effect edge slurring and 1/√t creep on long cables
 dielectric loss, multiple re-reflections and masking, capacitive dips and inductive
 bumps with the right time constants, correct DC settling levels, and
 instrument-realistic noise floors. Every physics claim is pinned by a closed-form unit
-test (224 tests at last count).
+test (300 tests at last count).
 
 ## Features
 
-- **Node-graph editor** (Nodify): drag cables/connectors/loads/faults from a sectioned
-  palette, wire them freely — tees are just three wires on a port, loops are legal.
+- **Node-graph editor** (Nodify): a bar of square buttons above the canvas (Cables,
+  Pairs, PCB traces, Ideal, Splices, Loads, Faults, Probe, Cable manager). A button
+  drops down its list; choosing an entry adds it at the centre of the view. Wire
+  things freely — tees are just three wires on a port, loops are legal. Every project
+  has exactly one TDR node, and it cannot be deleted.
 - **Live TDR trace** (ScottPlot): debounced background recompute on every edit, with a
   fast preview grid followed by a full-resolution pass; axis modes mV / mρ / Ω and
   time / distance (with a display velocity-factor choice); two draggable measurement
@@ -25,10 +28,23 @@ test (224 tests at last count).
 - **Pulse view**: periodic pulse-train stimulus with independent rise time, fall time,
   repetition rate and duty cycle, observed at any probe point; a "# of pulses
   displayed" view setting tiles the steady-state waveform.
+- **Teaching views**: hover the trace and the responsible component glows on the
+  canvas (hover or select a component and its stretch of the trace is shaded, tracking
+  live as you drag its slider); a "Peel" overlay draws the de-ghosted impedance profile
+  (layer peeling) over the raw Ω trace; a bounce-diagram tab draws the lattice of any
+  unbranched network, every ray labeled with its ρ/τ product, under the trace it explains.
+- **Return loss**: a tab plotting |Γ(f)| in dB — the frequency-domain twin of the
+  trace, straight from the Γ(f) every run already solves — on a linear or log frequency
+  axis, with return loss / VSWR / mismatch loss under the mouse and the instrument's
+  bandwidth marked.
+- **Custom cables**: define your own in a manager dialog, datasheet-style (Z₀, VF, DC
+  resistance, pasted attenuation points in dB/100 m or dB/100 ft) or as raw RLGC with
+  skin and tan δ terms; start from any catalog preset; they live in the project file and
+  behave exactly like presets (palette, overrides, connectors, fault sections).
 - **Catalog**: 28 cables with datasheet-grade parameters — coax from RG-178 to
   LMR-600, twisted pair (Cat3…Cat6A, RS-485, 300 Ω twin-lead), PCB traces (FR-4
   microstrip/stripline, 100 Ω differential pair, Rogers RO4350B, polyimide flex), and
-  ideal lossless teaching lines; connector and fault presets; five instrument presets
+  ideal lossless teaching lines; splice and fault presets; five instrument presets
   with per-class noise floors.
 - **Faults**: water-ingress / crushed sections (dielectric change at constant L),
   resistive bridges, series faults — all compiled onto exact line models.
@@ -122,6 +138,18 @@ kept only as a cross-check, enforced within 15 % by a test over the whole catalo
 PCB traces reuse the identical machinery with VF = 1/√ε_eff and loss tables built
 from ε_eff and tan δ — FR-4's ~0.02 floor and Rogers' 0.0037 are recovered from the
 tables by the fit, which a test asserts.
+
+**Custom cables.** A user-defined cable is an ordinary cable spec stored in the
+project file and resolved by id ahead of the catalog, so nothing downstream of the
+compiler can tell it from a preset. Datasheet entry goes through exactly the fit above
+(the dialog shows the fitted k1/k2 and the worst point's miss, so a table the two-term
+form cannot follow is visible before it is used). Raw RLGC entry skips the fit: R is
+the DC loop resistance, the skin term `Rs·√f` enters with its `(1+j)` like any other
+cable, tan δ feeds the same Djordjevic–Sarkar model, and a DC leakage G — which no
+catalog cable has — is added to Y′. Z₀ = √(L/C) and v = 1/√(LC) are derived and stored
+as the primary pair, so per-node Z₀/VF overrides keep working; with skin and tan δ at
+zero it is the textbook constant-RLGC line, whose DC input resistance
+√(R/G)·coth(√(RG)·l) a test pins on both solver paths.
 
 ## Solving the network
 
@@ -223,7 +251,10 @@ for a lab sampling head, 2 mV for a portable metallic TDR, 10 mV for a handheld
 tester). Noise is applied strictly at display time — never inside the solver or its
 caches — as seeded Gaussian noise with RMS σ/√N for N-sweep averaging, consistently
 across the ρ/V/Ω representations. A blank noise field means the preset's floor; an
-explicit 0 turns it off. Each published trace re-rolls, like a live repetitive sweep.
+explicit 0 turns it off. The instrument's sweep mode decides how it moves, and touches
+nothing else: **Normal** re-rolls the noise 4 times a second (adjustable, 0.5–30) like
+a free-running repetitive sweep, with no solver work per frame; **One shot** freezes a
+single acquisition, which stays put through edits until "New shot" takes another.
 
 ---
 
@@ -268,10 +299,10 @@ the solve returns the transfer function `T_n(f) = V(node n)/Vs` per frequency �
 the port itself this reduces to the familiar `(1 + Γ)/2`. The displayed waveform is
 then the Hermitian IFFT of `c_k · T_n(f_k)`.
 
-Probe points are the TDR port, every load, every bridge fault, and every junction.
-Junctions are electrically invisible (they merge nets and emit nothing), so *dropping
-a junction anywhere is the probe mechanism* — wire one mid-span and it appears in the
-probe dropdown. Degenerate cases stay exact: a probe on a shorted net reads
+Probe points are the TDR port, every load, every bridge fault, and every probe node
+(the **Probe** button; a `Junction` in the project file). Probe nodes are electrically
+invisible (they merge nets and emit nothing), so *adding one anywhere is the probe
+mechanism* — wire one mid-span and it appears in the probe dropdown. Degenerate cases stay exact: a probe on a shorted net reads
 identically zero, volts at an open end double, the waveform mean equals
 amplitude × duty × the DC transfer — all pinned by tests.
 
@@ -286,10 +317,68 @@ re-ranges when the pulse count changes.
 
 ---
 
+# Theory of operation — the teaching views
+
+None of these is a new way to compute Γ(f): they are analyses *of* the model and *of*
+the trace, and each is deliberately simpler than the engine so that what it gets wrong
+is itself instructive.
+
+## Cross-highlighting: the first-pass map
+
+The compiler records which canvas node every engine element came from. Dijkstra over
+cable delays then gives each electrical net its earliest one-way arrival t(n), and a
+cable between nets A and B with delay τ owns the round-trip interval
+`[2·min(tA, tB), tA + tB + τ]` — `[2tA, 2tB]` for an ordinary cable, and up to the
+point where the two wavefronts meet for a cable in a ring. Lumped parts own the single
+time 2·t(n). This is exactly what a TDR can know from timing alone: two branches at the
+same depth both light up, and past the deepest first-pass time the readout says
+*re-reflections only*. It works for any topology.
+
+## Layer peeling
+
+The "Peel" overlay runs the Schur recursion (dynamic deconvolution) on the displayed
+trace: the line is treated as a stack of equal-delay lossless layers, and each layer's
+reflection is read off the first sample and then *removed*, multiple reflections and
+all, before looking at the next (`r = b₀/a₀`, `a′ = a − r·b`, `b′ = shift(b − r·a)`,
+`Z′ = Z·(1+r)/(1−r)`). On a lossless cascade it reads the true Z₀ of every section
+where the raw Z(t) readout is contaminated by the shadow of earlier steps. It runs on a
+grid decimated to at most 2048 layers over the displayed span (a few ms), on the noisy
+displayed trace, as an instrument would. Where its assumptions fail it fails visibly:
+loss is read as steadily rising impedance, a branch as the parallel combination, noise
+grows with depth, and nothing behind an open or short is recoverable — the profile is
+dimmed past that point.
+
+## Bounce diagram
+
+The textbook lossless lattice, for unbranched networks. Cables contribute nominal Z₀
+and delay only; each interface scatters by the real ABCD product of the resistive lumps
+sitting on it (shunt G, series R) between the two line impedances, the instrument being
+a semi-infinite Z_ref line so that the port is interface 0. Reactive parts use their DC
+limit and are flagged. Coincident rays are merged, as on paper, then rays under 1 mρ
+are dropped. Nothing is idealized into a joint: automatically inserted connector
+hardware appears as the short real sections it is. The running sum of what returns to
+the port is drawn as a staircase over the simulated ρ on a shared time axis — on a
+lossless resistive network the two agree (pinned by tests); otherwise the gap between
+them *is* the loss, the rise time and the reactance.
+
+## Return loss
+
+Not an analysis at all, just a different view of the same solve: the tab plots
+20·log₁₀|Γ(f)| of the Γ(f) the trace was synthesized from, referenced to the
+instrument's source impedance, *before* the Gaussian edge and the window shape it —
+what a VNA would show for the network. It runs to 1/t_rise (about three instrument
+bandwidths; the −3 dB point is marked), because structure above the bandwidth is real
+but nearly invisible on the trace. A flat line is a pure resistive mismatch, ripple
+spacing is 1/(2·delay) of the section causing it, and the envelope sinking with
+frequency is cable loss hiding the far end. The curve is floored at −80 dB, and display
+noise never touches it.
+
+---
+
 # Validation
 
 The engine was finished and proven against closed forms before any UI existed, so UI
-work never debugs physics. The suite (224 tests) includes, among others:
+work never debugs physics. The suite (300 tests) includes, among others:
 
 | Case | Expected (closed form) |
 |---|---|
@@ -304,6 +393,11 @@ work never debugs physics. The suite (224 tests) includes, among others:
 | Faults | series R/(R+2Z₀), bridge −Z₀/(2R+Z₀), section dip level & v′ = s·VF timing |
 | Pulse view | delay, open-end doubling, duty-cycle mean, independent rise/fall |
 | Caching | cold vs. warm runs bitwise identical on both solver paths |
+| Layer peeling | exact recovery of a known layer stack; true Z₀ behind ghosts; loss/branch/open failure modes |
+| Bounce diagram | hand-computed ρ/τ ladders; staircase equals the simulated lossless plateaus and DC level |
+| First-pass map | spans tile the round trip; equal-depth branches share; ring meeting point |
+| Return loss | flat |Γ| of a resistive mismatch; a mismatched section's ripple equals the line equation at every grid frequency |
+| Custom cables | datasheet entry equals the same preset; RLGC reproduces a fitted cable; leaky-line DC resistance on both solvers |
 
 Plus serializer round-trips, document-compiler validation (issues, not exceptions),
 and every built-in example compiling with zero issues.
@@ -311,8 +405,8 @@ and every built-in example compiling with zero issues.
 # Layout
 
 - `src/TdrSim.Core` — engine, network model, project documents, catalog (no UI deps)
-- `src/TdrSim.App` — WPF app: `Editor/` (Nodify canvas), `Plot/` (trace + pulse
-  panels), `Shell/` (window, toolbar, live pipeline)
+- `src/TdrSim.App` — WPF app: `Editor/` (Nodify canvas), `Plot/` (trace, pulse,
+  bounce and return-loss panels), `Shell/` (window, toolbar, live pipeline)
 - `tests/TdrSim.Core.Tests` — the analytic validation suite
 - `PLAN.md` — full design; `plans/` — per-milestone plans; `TODO.md` — backlog
 

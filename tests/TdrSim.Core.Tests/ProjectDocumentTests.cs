@@ -16,6 +16,8 @@ public class ProjectDocumentTests
             SourceImpedanceOverrideOhms = 75,
             NoiseRmsMillivolts = 2.5,
             AveragingSweeps = 16,
+            OneShot = true,
+            NoiseRefreshHz = 10,
         },
         Nodes =
         [
@@ -31,7 +33,7 @@ public class ProjectDocumentTests
                 Z0OverrideOhms = 52,
                 VfOverride = 0.7,
             },
-            new DocumentNode { Id = "k1", Kind = DocumentNodeKind.Connector, ConnectorPresetId = "bnc-barrel" },
+            new DocumentNode { Id = "k1", Kind = DocumentNodeKind.Connector, ConnectorPresetId = "splice-clean" },
             new DocumentNode
             {
                 Id = "l1",
@@ -91,13 +93,15 @@ public class ProjectDocumentTests
         Assert.Equal(LoadKind.SeriesRlc, load.LoadKind);
         Assert.Equal(2e-12, load.CFarads);
 
-        Assert.Equal("bnc-barrel", back.Nodes.Single(n => n.Id == "k1").ConnectorPresetId);
+        Assert.Equal("splice-clean", back.Nodes.Single(n => n.Id == "k1").ConnectorPresetId);
         Assert.Equal(("c1", "B", "j1", "P"),
             (back.Wires[1].FromNodeId, back.Wires[1].FromPort, back.Wires[1].ToNodeId, back.Wires[1].ToPort));
         Assert.Equal(150, back.Instrument.RiseTimePsOverride);
         Assert.Equal(75, back.Instrument.SourceImpedanceOverrideOhms);
         Assert.Equal(2.5, back.Instrument.NoiseRmsMillivolts);
         Assert.Equal(16, back.Instrument.AveragingSweeps);
+        Assert.True(back.Instrument.OneShot);
+        Assert.Equal(10, back.Instrument.NoiseRefreshHz);
 
         var section = back.Nodes.Single(n => n.Id == "f1");
         Assert.Equal(FaultKind.SectionOverride, section.FaultKind);

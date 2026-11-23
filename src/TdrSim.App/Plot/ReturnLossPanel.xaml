@@ -1,0 +1,62 @@
+<UserControl x:Class="TdrSim.App.Plot.ReturnLossPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:scottplot="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#333337" Padding="6,3">
+            <DockPanel LastChildFill="True">
+                <ToggleButton DockPanel.Dock="Left"
+                              Content="Log f"
+                              IsChecked="{Binding LogFrequency}"
+                              Padding="10,2"
+                              Margin="2,0,10,0"
+                              ToolTip="Logarithmic frequency axis"
+                              AutomationProperties.Name="Log frequency" />
+                <TextBlock Text="{Binding Caption}"
+                           Foreground="#E2B93B"
+                           FontSize="11"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           AutomationProperties.AutomationId="ReturnLossCaption" />
+            </DockPanel>
+        </Border>
+
+        <scottplot:WpfPlot x:Name="ThePlot" Grid.Row="1" />
+
+        <Border Grid.Row="2" Background="#252526" Padding="8,2" MinHeight="20">
+            <TextBlock Text="{Binding HoverReadout}"
+                       Foreground="#CCC"
+                       FontFamily="Consolas"
+                       FontSize="12"
+                       TextTrimming="CharacterEllipsis"
+                       AutomationProperties.AutomationId="ReturnLossReadout" />
+        </Border>
+
+        <!-- nothing to show -->
+        <Border Grid.Row="0"
+                Grid.RowSpan="3"
+                Background="#2D2D30"
+                Visibility="{Binding HasMessage, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{Binding Message}"
+                       Foreground="#CCC"
+                       FontSize="13"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       MaxWidth="560"
+                       Margin="16,0"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       AutomationProperties.AutomationId="ReturnLossMessage" />
+        </Border>
+    </Grid>
+</UserControl>

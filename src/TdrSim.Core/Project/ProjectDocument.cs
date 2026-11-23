@@ -1,3 +1,4 @@
+using TdrSim.Core.Catalog;
 using TdrSim.Core.Model;
 
 namespace TdrSim.Core.Project;
@@ -11,9 +12,10 @@ namespace TdrSim.Core.Project;
 public sealed record ProjectDocument
 {
     /// <summary>v2 (M5) added fault nodes and instrument noise; v3 added connector-type
-    /// overrides on the TDR and cable ends. Each older version is a strict subset and
-    /// loads unchanged. Files are always written at the current version.</summary>
-    public const int CurrentSchemaVersion = 3;
+    /// overrides on the TDR and cable ends; v4 added user-defined cables. Each older
+    /// version is a strict subset and loads unchanged. Files are always written at the
+    /// current version.</summary>
+    public const int CurrentSchemaVersion = 4;
 
     public const int OldestReadableSchemaVersion = 1;
 
@@ -24,6 +26,10 @@ public sealed record ProjectDocument
     public required IReadOnlyList<DocumentNode> Nodes { get; init; }
 
     public required IReadOnlyList<DocumentWire> Wires { get; init; }
+
+    /// <summary>User-defined cables (schema v4), referenced from cable and fault nodes
+    /// by <see cref="CableSpec.Id"/> exactly like catalog presets; null = none.</summary>
+    public IReadOnlyList<CableSpec>? CustomCables { get; init; }
 }
 
 public enum DocumentNodeKind
@@ -151,4 +157,12 @@ public sealed record InstrumentDocument
     /// <summary>Front-panel connector family (schema v3): null = the preset's default,
     /// "none" = bare terminals, otherwise a ConnectorFamilySpec id.</summary>
     public string? PortConnectorId { get; init; }
+
+    /// <summary>Sweep mode (schema v4), display noise only: null/false = normal, the
+    /// noise is re-rolled <see cref="NoiseRefreshHz"/> times a second like a
+    /// free-running sweep; true = one shot, a single frozen acquisition.</summary>
+    public bool? OneShot { get; init; }
+
+    /// <summary>Normal-mode noise refresh rate (schema v4); null = 4 per second.</summary>
+    public double? NoiseRefreshHz { get; init; }
 }

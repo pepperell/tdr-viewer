@@ -250,7 +250,7 @@ public class InterfaceTests
             portConnectorId: "n-50");
         var back = ProjectSerializer.Deserialize(ProjectSerializer.Serialize(document));
 
-        Assert.Equal(3, back.SchemaVersion);
+        Assert.Equal(ProjectDocument.CurrentSchemaVersion, back.SchemaVersion);
         Assert.Equal("n-50", back.Instrument.PortConnectorId);
         var cable = back.Nodes.Single(n => n.Id == "c1");
         Assert.Equal("sma-50", cable.ConnectorAId);

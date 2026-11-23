@@ -1,0 +1,281 @@
+<Window x:Class="TdrSim.App.Editor.CustomCablesDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Cable manager"
+        Width="760"
+        Height="600"
+        MinWidth="640"
+        MinHeight="480"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="#2D2D30">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#AAA" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+        </Style>
+        <Style x:Key="Note" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#888" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="FieldBox" TargetType="TextBox">
+            <Setter Property="Margin" Value="0,3" />
+            <Setter Property="Padding" Value="2,1" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="12">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="210" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- the document's custom cables -->
+        <DockPanel Grid.Column="0" Margin="0,0,12,0">
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                <Button Content="New cable"
+                        Command="{Binding NewCommand}"
+                        Padding="8,3"
+                        AutomationProperties.AutomationId="CustomCableNew" />
+                <TextBlock Text="or start from a preset:" Style="{StaticResource Note}" Margin="0,8,0,2" />
+                <ComboBox ItemsSource="{Binding CatalogCables}"
+                          SelectedItem="{Binding CopySource}"
+                          DisplayMemberPath="Name"
+                          AutomationProperties.Name="Copy preset" />
+                <Button Content="Delete"
+                        Command="{Binding DeleteCommand}"
+                        Padding="8,3"
+                        Margin="0,10,0,0"
+                        AutomationProperties.AutomationId="CustomCableDelete" />
+                <TextBlock Text="{Binding DeleteNote}" Style="{StaticResource Note}" Margin="0,3,0,0" />
+            </StackPanel>
+            <ListBox ItemsSource="{Binding Entries}"
+                     SelectedItem="{Binding Selected}"
+                     DisplayMemberPath="Name"
+                     AutomationProperties.AutomationId="CustomCableList" />
+        </DockPanel>
+
+        <!-- the selected cable -->
+        <TextBlock Grid.Column="1"
+                   Text="No custom cables yet. Create one, or start from a catalog preset and change it."
+                   Foreground="#999"
+                   TextWrapping="Wrap"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center"
+                   MaxWidth="320"
+                   TextAlignment="Center">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasSelection}" Value="False">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+
+        <ScrollViewer Grid.Column="1"
+                      VerticalScrollBarVisibility="Auto"
+                      Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}">
+            <StackPanel DataContext="{Binding Selected}" Margin="0,0,4,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Name" Style="{StaticResource FieldLabel}" />
+                    <TextBox Grid.Row="0"
+                             Grid.Column="1"
+                             Style="{StaticResource FieldBox}"
+                             Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Cable name" />
+                    <TextBlock Grid.Row="1" Text="Kind" Style="{StaticResource FieldLabel}" />
+                    <ComboBox Grid.Row="1"
+                              Grid.Column="1"
+                              Margin="0,3"
+                              ItemsSource="{Binding Categories}"
+                              SelectedItem="{Binding Category}" />
+                    <TextBlock Grid.Row="2" Text="Default connector" Style="{StaticResource FieldLabel}" />
+                    <ComboBox Grid.Row="2"
+                              Grid.Column="1"
+                              Margin="0,3"
+                              ItemsSource="{Binding ConnectorChoiceList}"
+                              SelectedItem="{Binding Connector}"
+                              DisplayMemberPath="Label" />
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,6">
+                    <RadioButton Content="Datasheet"
+                                 IsChecked="{Binding IsDatasheet}"
+                                 Foreground="#DDD"
+                                 Margin="0,0,16,0"
+                                 AutomationProperties.AutomationId="CustomCableDatasheet" />
+                    <RadioButton Content="Raw RLGC"
+                                 IsChecked="{Binding IsRlgc}"
+                                 Foreground="#DDD"
+                                 AutomationProperties.AutomationId="CustomCableRlgc" />
+                </StackPanel>
+
+                <!-- datasheet style -->
+                <StackPanel Visibility="{Binding IsDatasheet, Converter={StaticResource BoolToVis}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="Z0 (Ω)" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Row="0"
+                                 Grid.Column="1"
+                                 Style="{StaticResource FieldBox}"
+                                 Text="{Binding Z0Text, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Custom Z0" />
+                        <TextBlock Grid.Row="1" Text="Velocity factor" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Row="1"
+                                 Grid.Column="1"
+                                 Style="{StaticResource FieldBox}"
+                                 Text="{Binding VfText, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Custom VF" />
+                        <TextBlock Grid.Row="2" Text="DC resistance (Ω/km)" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Row="2"
+                                 Grid.Column="1"
+                                 Style="{StaticResource FieldBox}"
+                                 Text="{Binding RdcText, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Custom Rdc" />
+                        <TextBlock Grid.Row="2"
+                                   Grid.Column="2"
+                                   Text="loop: center + shield"
+                                   Style="{StaticResource Note}"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0" />
+                    </Grid>
+                    <DockPanel Margin="0,10,0,3">
+                        <CheckBox DockPanel.Dock="Right"
+                                  Content="figures are dB per 100 ft"
+                                  IsChecked="{Binding Per100Ft}"
+                                  Foreground="#DDD"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="Attenuation points" Style="{StaticResource FieldLabel}" />
+                    </DockPanel>
+                    <TextBox Text="{Binding PointsText, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True"
+                             Height="130"
+                             FontFamily="Consolas"
+                             VerticalScrollBarVisibility="Auto"
+                             AutomationProperties.Name="Attenuation points" />
+                    <TextBlock Text="One point per line: frequency in MHz, then attenuation in dB/100 m (or dB/100 ft with the box ticked). Leave empty for a line with DC resistance only."
+                               Style="{StaticResource Note}"
+                               Margin="0,3,0,0" />
+                </StackPanel>
+
+                <!-- raw line constants -->
+                <StackPanel Visibility="{Binding IsRlgc, Converter={StaticResource BoolToVis}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="L (nH/m)" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource FieldBox}"
+                                 Text="{Binding LText, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Custom L" />
+                        <TextBlock Grid.Row="1" Text="C (pF/m)" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource FieldBox}"
+                                 Text="{Binding CText, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Custom C" />
+                        <TextBlock Grid.Row="2" Text="R (Ω/m)" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource FieldBox}"
+                                 Text="{Binding RText, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Custom R" />
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="DC loop resistance"
+                                   Style="{StaticResource Note}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                        <TextBlock Grid.Row="3" Text="G (µS/m)" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource FieldBox}"
+                                 Text="{Binding GText, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Custom G" />
+                        <TextBlock Grid.Row="3" Grid.Column="2" Text="DC leakage"
+                                   Style="{StaticResource Note}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                        <TextBlock Grid.Row="4" Text="Skin R (mΩ/m)" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource FieldBox}"
+                                 Text="{Binding SkinText, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Custom skin" />
+                        <TextBlock Grid.Row="4" Grid.Column="2" Text="at 1 MHz; grows as √f"
+                                   Style="{StaticResource Note}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                        <TextBlock Grid.Row="5" Text="tan δ" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Row="5" Grid.Column="1" Style="{StaticResource FieldBox}"
+                                 Text="{Binding TanDeltaText, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Custom tan delta" />
+                        <TextBlock Grid.Row="5" Grid.Column="2" Text="dielectric loss, at 100 MHz"
+                                   Style="{StaticResource Note}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    </Grid>
+                    <TextBlock Text="Z0 = √(L/C) and the velocity follow from L and C. Set skin R and tan δ to 0 for the textbook constant-RLGC line."
+                               Style="{StaticResource Note}"
+                               Margin="0,6,0,0" />
+                </StackPanel>
+
+                <Border Background="#252526" Padding="8,6" Margin="0,12,0,0">
+                    <TextBlock Text="{Binding Summary}"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               AutomationProperties.AutomationId="CustomCableSummary">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#CCC" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsValid}" Value="False">
+                                        <Setter Property="Foreground" Value="#FF8A80" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="1"
+                    Grid.ColumnSpan="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,12,0,0">
+            <Button Content="OK"
+                    IsDefault="True"
+                    IsEnabled="{Binding CanAccept}"
+                    Click="OnOk"
+                    Width="84"
+                    Padding="0,3"
+                    Margin="0,0,8,0"
+                    AutomationProperties.AutomationId="CustomCableOk" />
+            <Button Content="Cancel" IsCancel="True" Width="84" Padding="0,3" />
+        </StackPanel>
+    </Grid>
+</Window>

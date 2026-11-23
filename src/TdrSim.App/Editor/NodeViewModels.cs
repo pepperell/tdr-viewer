@@ -21,6 +21,11 @@ public abstract partial class NodeViewModelBase(string id) : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
+    /// <summary>The trace (or a bounce-diagram ray) is pointing at this node: the
+    /// canvas draws a glow. Transient view state, never saved.</summary>
+    [ObservableProperty]
+    private bool _isTraceHighlighted;
+
     public List<PortViewModel> InputPorts { get; } = [];
 
     public List<PortViewModel> OutputPorts { get; } = [];
@@ -80,6 +85,21 @@ public sealed partial class CableNodeViewModel : NodeViewModelBase
         ConnectorChoiceList = connectorChoices;
         InputPorts.Add(new PortViewModel(this, DocumentPorts.A));
         OutputPorts.Add(new PortViewModel(this, DocumentPorts.B));
+        UpdatePortLabels();
+    }
+
+    /// <summary>Port labels carry each end's effective connector: "A:BNC", "B:SMA";
+    /// a bare end is just "A".</summary>
+    private void UpdatePortLabels()
+    {
+        InputPorts[0].Label = PortLabel(DocumentPorts.A, _connectorAId);
+        OutputPorts[0].Label = PortLabel(DocumentPorts.B, _connectorBId);
+    }
+
+    private string PortLabel(string port, string? overrideId)
+    {
+        string? shortName = ResolveChoice(overrideId)?.ShortName;
+        return string.IsNullOrEmpty(shortName) ? port : $"{port}:{shortName}";
     }
 
     public IReadOnlyList<CableSpec> Presets { get; }
@@ -96,6 +116,7 @@ public sealed partial class CableNodeViewModel : NodeViewModelBase
             if (value is null || value.Id == _presetId)
                 return;
             _presetId = value.Id;
+            UpdatePortLabels();
             OnPropertyChanged();
             OnPropertyChanged(nameof(Title));
             OnPropertyChanged(nameof(Z0Ohms));
@@ -107,7 +128,32 @@ public sealed partial class CableNodeViewModel : NodeViewModelBase
             OnPropertyChanged(nameof(Z0DefaultNote));
             OnPropertyChanged(nameof(VfDefaultNote));
             OnPropertyChanged(nameof(ConnectorDefaultNote));
+            OnPropertyChanged(nameof(IsCustomPreset));
         }
+    }
+
+    /// <summary>The preset is one of the document's user-defined cables (editable).</summary>
+    public bool IsCustomPreset => SelectedPreset?.Section == CustomCable.Section;
+
+    public string? PresetId => _presetId;
+
+    /// <summary>The cable list changed under this node (a custom cable was edited,
+    /// added or removed): everything derived from the preset is stale.</summary>
+    public void RefreshPreset()
+    {
+        UpdatePortLabels();
+        OnPropertyChanged(nameof(SelectedPreset));
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(Z0Ohms));
+        OnPropertyChanged(nameof(Vf));
+        OnPropertyChanged(nameof(Z0Log));
+        OnPropertyChanged(nameof(VfSlider));
+        OnPropertyChanged(nameof(SelectedConnectorA));
+        OnPropertyChanged(nameof(SelectedConnectorB));
+        OnPropertyChanged(nameof(Z0DefaultNote));
+        OnPropertyChanged(nameof(VfDefaultNote));
+        OnPropertyChanged(nameof(ConnectorDefaultNote));
+        OnPropertyChanged(nameof(IsCustomPreset));
     }
 
     // ---- effective values shown in the inspector ----
@@ -158,7 +204,10 @@ public sealed partial class CableNodeViewModel : NodeViewModelBase
 
     /// <summary>Document hydration path (no change notification needed mid-build).</summary>
     public void InitConnectors(string? connectorAId, string? connectorBId)
-        => (_connectorAId, _connectorBId) = (connectorAId, connectorBId);
+    {
+        (_connectorAId, _connectorBId) = (connectorAId, connectorBId);
+        UpdatePortLabels();
+    }
 
     public string ConnectorDefaultNote =>
         $"Default: {ConnectorChoices.EffectiveName(ConnectorChoiceList, null, SelectedPreset?.DefaultConnector)}"
@@ -180,6 +229,7 @@ public sealed partial class CableNodeViewModel : NodeViewModelBase
         if (stored == field)
             return;
         field = stored;
+        UpdatePortLabels();
         OnPropertyChanged(propertyName);
     }
 
@@ -254,7 +304,7 @@ public sealed partial class ConnectorNodeViewModel : NodeViewModelBase
         }
     }
 
-    public override string Title => SelectedPreset?.Name ?? _presetId ?? "connector";
+    public override string Title => SelectedPreset?.Name ?? _presetId ?? "splice";
 
     public override DocumentNodeKind Kind => DocumentNodeKind.Connector;
 
@@ -408,14 +458,15 @@ public sealed partial class FaultNodeViewModel : NodeViewModelBase
         };
     }
 
-    public static FaultNodeViewModel FromDocument(DocumentNode docNode, ComponentCatalog catalog)
+    public static FaultNodeViewModel FromDocument(
+        DocumentNode docNode, ComponentCatalog catalog, IReadOnlyList<CableSpec> cables)
     {
         var kind = docNode.FaultKind ?? FaultKind.SectionOverride;
         var preset = docNode.FaultPresetId is null
             ? null
             : catalog.Faults.FirstOrDefault(f => f.Id == docNode.FaultPresetId);
         return new FaultNodeViewModel(
-            docNode.Id, kind, catalog.Cables, docNode.FaultPresetId, preset?.Name ?? DefaultName(kind))
+            docNode.Id, kind, cables, docNode.FaultPresetId, preset?.Name ?? DefaultName(kind))
         {
             BasePresetId = docNode.CablePresetId,
             LengthM = docNode.LengthM,
@@ -428,6 +479,8 @@ public sealed partial class FaultNodeViewModel : NodeViewModelBase
     public FaultKind FaultKind { get; }
 
     public IReadOnlyList<CableSpec> CablePresets { get; }
+
+    public void RefreshPreset() => OnPropertyChanged(nameof(SelectedBasePreset));
 
     public bool IsSection => FaultKind == FaultKind.SectionOverride;
 

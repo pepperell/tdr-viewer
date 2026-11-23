@@ -26,12 +26,12 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- display-mode bar -->
         <Border Grid.Row="0" Background="#333337" Padding="6,3">
-            <DockPanel LastChildFill="True">
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+            <WrapPanel ItemHeight="24">
                     <TextBlock Text="y:" Style="{StaticResource BarLabel}" Margin="2,0,2,0" />
                     <RadioButton Content="mV" GroupName="YMode" Style="{StaticResource ModeRadio}"
                                  IsChecked="{Binding YMode, Converter={StaticResource EnumEq}, ConverterParameter=MilliVolts}" />
@@ -57,6 +57,13 @@
                                   IsChecked="{Binding CursorsEnabled}"
                                   Padding="9,1"
                                   VerticalAlignment="Center" />
+                    <ToggleButton Content="Peel"
+                                  IsChecked="{Binding PeelEnabled}"
+                                  Padding="9,1"
+                                  Margin="4,0,0,0"
+                                  VerticalAlignment="Center"
+                                  AutomationProperties.Name="Peel"
+                                  ToolTip="Layer peeling: overlay the de-ghosted impedance profile (Ω mode). Assumes a lossless, unbranched line - loss reads as rising impedance." />
                     <Border Width="1" Background="#555" Margin="10,2" />
                     <Button Content="Set ref"
                             Command="{Binding SetReferenceCommand}"
@@ -82,15 +89,13 @@
                             Margin="4,0,0,0"
                             VerticalAlignment="Center"
                             ToolTip="Export the plot as a PNG image" />
-                </StackPanel>
                 <TextBlock Text="{Binding Warning}"
                            Foreground="#E2B93B"
                            FontSize="11"
                            VerticalAlignment="Center"
-                           HorizontalAlignment="Right"
                            Margin="12,0,4,0"
                            TextTrimming="CharacterEllipsis" />
-            </DockPanel>
+            </WrapPanel>
         </Border>
 
         <!-- plot + progress shimmer -->
@@ -112,6 +117,24 @@
                        Foreground="#CCC"
                        FontFamily="Consolas"
                        FontSize="12" />
+        </Border>
+
+        <!-- what is under the mouse / peel status -->
+        <Border Grid.Row="3" Background="#252526" Padding="8,2" MinHeight="20">
+            <DockPanel LastChildFill="True">
+                <TextBlock DockPanel.Dock="Right"
+                           Text="{Binding PeelCaption}"
+                           Foreground="#E0963C"
+                           FontSize="11"
+                           VerticalAlignment="Center"
+                           Margin="12,0,0,0" />
+                <TextBlock Text="{Binding HoverReadout}"
+                           Foreground="#CCC"
+                           FontSize="11"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           AutomationProperties.AutomationId="TraceHoverReadout" />
+            </DockPanel>
         </Border>
     </Grid>
 </UserControl>

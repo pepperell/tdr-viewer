@@ -346,6 +346,10 @@ Project files: JSON (System.Text.Json), schema-versioned, round-trips canvas lay
   Detailed plan: [plans/M5.md](plans/M5.md).
 - **M6 — Teaching extras** (optional): bounce-diagram panel, trace↔canvas cross-highlighting,
   layer-peeling overlay.
+  Detailed plan: [plans/M6.md](plans/M6.md).
+- **M7 — Component bar**: square, graphical add-buttons with drop-downs replace the palette
+  list; a Probe button; the TDR node is permanent.
+  Detailed plan: [plans/M7.md](plans/M7.md).
 
 Build order rationale: the engine is finished and *proven against closed forms* before any UI
 exists, so UI work never debugs physics and physics never debugs bindings.

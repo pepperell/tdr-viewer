@@ -84,6 +84,12 @@ public sealed record TdrTrace
 
     /// <summary>Which solver produced Gamma(f) (chain fast path vs general nodal).</summary>
     public required SolverPath Solver { get; init; }
+
+    /// <summary>The network's own reflection coefficient at f_n = n * Grid.DfHz,
+    /// n = 0..M/2, referenced to the instrument's source impedance - what the trace
+    /// was synthesized from, before the instrument's edge and window shaped it.
+    /// (Not time-indexed: M/2 + 1 entries.)</summary>
+    public Complex[]? Gamma { get; init; }
 }
 
 public static class TdrSimulator
@@ -172,6 +178,7 @@ public static class TdrSimulator
             Settled = step.Settled,
             MaxImagRatio = Math.Max(step.MaxImagRatio, edge.MaxImagRatio),
             Solver = chain is not null ? SolverPath.Chain : SolverPath.Nodal,
+            Gamma = gamma,
         };
     }
 }

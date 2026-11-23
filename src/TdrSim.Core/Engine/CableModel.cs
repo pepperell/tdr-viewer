@@ -40,6 +40,22 @@ public sealed class CableModel
         (_epsInf, _epsD) = Dielectric.Identify(dk, TanDelta);
     }
 
+    /// <summary>Raw line constants: loss terms are given, not fitted.</summary>
+    private CableModel(double z0, double velocityFactor, RlgcParameters rlgc, double dk)
+    {
+        Z0 = z0;
+        VelocityFactor = velocityFactor;
+        VelocityMPerS = velocityFactor * ComplexMath.C0;
+        CPerM = 1 / (z0 * VelocityMPerS);
+        LPerM = z0 / VelocityMPerS;
+        R0PerM = rlgc.ROhmsPerM;
+        G0PerM = rlgc.GSiemensPerM;
+        RsOhmsPerMSqrtHz = rlgc.SkinOhmsPerMSqrtHz;
+        TanDelta = rlgc.TanDelta;
+        Dk = dk;
+        (_epsInf, _epsD) = Dielectric.Identify(dk, TanDelta);
+    }
+
     public double Z0 { get; }
     public double VelocityFactor { get; }
     public double VelocityMPerS { get; }
@@ -53,6 +69,9 @@ public sealed class CableModel
     /// <summary>Loop DC resistance, ohms/m.</summary>
     public double R0PerM { get; }
 
+    /// <summary>DC shunt conductance, S/m; nonzero only for raw-RLGC custom cables.</summary>
+    public double G0PerM { get; }
+
     /// <summary>Skin-effect coefficient: R_skin(f) = Rs*sqrt(f), ohms/(m*sqrt(Hz)).</summary>
     public double RsOhmsPerMSqrtHz { get; }
 
@@ -65,6 +84,8 @@ public sealed class CableModel
     public static CableModel FromSpec(CableSpec spec)
     {
         double dk = spec.DielectricConstant ?? 1 / (spec.VelocityFactor * spec.VelocityFactor);
+        if (spec.Rlgc is { } rlgc)
+            return new CableModel(spec.Z0Ohms, spec.VelocityFactor, rlgc, dk);
         double r0 = (spec.RdcCenterOhmsPerKm + spec.RdcShieldOhmsPerKm) / 1000;
         return new CableModel(spec.Z0Ohms, spec.VelocityFactor, r0, LossFit.FromSpec(spec), dk);
     }
@@ -94,6 +115,8 @@ public sealed class CableModel
             : new Complex(1, -TanDelta);
 
         Complex y = new Complex(0, w * CPerM) * epsNormalized;
+        if (G0PerM != 0)
+            y += G0PerM;
         return (z, y);
     }
 }

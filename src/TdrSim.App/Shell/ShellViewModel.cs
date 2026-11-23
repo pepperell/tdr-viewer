@@ -28,12 +28,18 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly DispatcherTimer _undoCommitTimer;
     private readonly Random _noiseRandom = new();
     private readonly DispatcherTimer _pulseTimer;
+    private readonly DispatcherTimer _noiseTimer;
+    private int _shotSeed;
+    private LiveTraceResult? _lastResult;
     private CancellationTokenSource? _pulseCts;
     private int _pulseVersion;
     private string? _filePath;
     private bool _isDirty;
     private bool _loading;
     private DocumentCompilation? _compilation;
+    private TraceFeatureMap? _featureMap;
+    private IReadOnlyList<string> _traceHoverNodes = [];
+    private IReadOnlyList<string> _bounceHoverNodes = [];
 
     public ShellViewModel()
     {
@@ -43,6 +49,21 @@ public sealed partial class ShellViewModel : ObservableObject
         Palette = new PaletteViewModel(_catalog, Editor);
         TracePanel = new TracePanelViewModel();
         Pulse = new PulseViewModel();
+        Bounce = new BounceViewModel { TitleOf = NodeTitle };
+        ReturnLossView = new ReturnLossViewModel();
+
+        // Cross-highlighting: the trace (or a bounce ray) points at canvas nodes;
+        // hovered/selected canvas nodes shade their stretch of the trace.
+        TracePanel.HoverNodesChanged += nodes =>
+        {
+            _traceHoverNodes = nodes;
+            ApplyNodeGlow();
+        };
+        Bounce.HoverNodesChanged += nodes =>
+        {
+            _bounceHoverNodes = nodes;
+            ApplyNodeGlow();
+        };
 
         // Pulse view recompute: 30 ms debounce, latest-wins; parameters and probe
         // changes reschedule, "# pulses" is view-only tiling and does not.
@@ -101,10 +122,92 @@ public sealed partial class ShellViewModel : ObservableObject
         {
             if (e.PropertyName == nameof(EditorViewModel.SelectedNode))
                 UpdateInspector();
+            if (e.PropertyName == nameof(EditorViewModel.HoveredNode))
+                UpdateTraceHighlights();
+        };
+        Editor.SelectedNodes.CollectionChanged += (_, _) => UpdateTraceHighlights();
+
+        // Sweep mode (display noise only): normal re-rolls the noise at the chosen
+        // rate like a free-running sweep; one shot holds one seed until "New shot".
+        _shotSeed = _noiseRandom.Next();
+        _noiseTimer = new DispatcherTimer();
+        _noiseTimer.Tick += (_, _) => RedrawNoise();
+        Instrument.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(InstrumentViewModel.OneShot)
+                or nameof(InstrumentViewModel.NoiseRefreshHz))
+            {
+                UpdateNoiseTimer();
+            }
+        };
+        Instrument.ShotRequested += () =>
+        {
+            _shotSeed = _noiseRandom.Next();
+            RedrawNoise();
+        };
+
+        // The plots wear the selected instrument's own screen colours.
+        Instrument.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(InstrumentViewModel.SelectedPreset))
+                ApplyPlotTheme();
         };
 
         LoadIntoEditor(ProjectSerializer.LoadEmbeddedDefault(), null);
         UpdateInspector();
+        UpdateNoiseTimer();
+        ApplyPlotTheme();
+    }
+
+    private void ApplyPlotTheme()
+    {
+        var theme = PlotTheme.From(Instrument.SelectedPreset?.Display);
+        TracePanel.Theme = theme;
+        Pulse.Theme = theme;
+    }
+
+    private int NextNoiseSeed() => Instrument.OneShot ? _shotSeed : _noiseRandom.Next();
+
+    private void UpdateNoiseTimer()
+    {
+        _noiseTimer.Stop();
+        if (Instrument.OneShot)
+        {
+            RedrawNoise(); // settle on the held acquisition straight away
+            return;
+        }
+
+        _noiseTimer.Interval = TimeSpan.FromSeconds(1 / Instrument.NoiseRefreshHz);
+        _noiseTimer.Start();
+    }
+
+    /// <summary>Same simulation, a fresh acquisition's noise (or the held one-shot
+    /// noise): no solver work, just the display stage.</summary>
+    private void RedrawNoise()
+    {
+        if (_compilation?.Noise is null)
+            return;
+        if (_lastResult is { } result)
+            ShowTrace(result);
+        Pulse.SetNoiseSeed(NextNoiseSeed());
+    }
+
+    private void ShowTrace(LiveTraceResult result)
+    {
+        var displayed = result.Trace;
+        double noiseRmsVolts = 0;
+        double amplitudeVolts = 1;
+        if (_compilation is { Noise: { } noise, Instrument: { } instrument })
+        {
+            displayed = TraceNoise.Apply(
+                displayed, noise, instrument.StepAmplitudeVolts, instrument.SourceImpedanceOhms,
+                NextNoiseSeed());
+            noiseRmsVolts = noise.EffectiveRmsVolts;
+            amplitudeVolts = instrument.StepAmplitudeVolts;
+        }
+
+        TracePanel.SetTrace(
+            displayed, result.IsPreview, clean: result.Trace, noiseRmsVolts, amplitudeVolts);
     }
 
     public EditorViewModel Editor { get; }
@@ -117,14 +220,25 @@ public sealed partial class ShellViewModel : ObservableObject
 
     public PulseViewModel Pulse { get; }
 
-    /// <summary>0 = TDR trace, 1 = pulse view; switching to the pulse view computes it.</summary>
+    public BounceViewModel Bounce { get; }
+
+    public ReturnLossViewModel ReturnLossView { get; }
+
+    private const int BounceViewIndex = 1;
+    private const int ReturnLossViewIndex = 2;
+
+    /// <summary>Left plot pane: 0 = TDR trace, 1 = bounce diagram, 2 = return loss;
+    /// the last two are computed only while visible. The pulse view has its own pane
+    /// beside it and is always live.</summary>
     [ObservableProperty]
     private int _activeViewIndex;
 
     partial void OnActiveViewIndexChanged(int value)
     {
-        if (value == 1)
-            SchedulePulse();
+        if (value == BounceViewIndex)
+            UpdateBounce();
+        if (value == ReturnLossViewIndex)
+            UpdateReturnLoss();
     }
 
     public IReadOnlyList<ExampleProject> Examples { get; } = ExampleProjects.All;
@@ -132,7 +246,11 @@ public sealed partial class ShellViewModel : ObservableObject
     public ObservableCollection<IssueBadge> Badges { get; } = [];
 
     /// <summary>Stops the live pipeline; call once when the window closes.</summary>
-    public void Shutdown() => _runner.Dispose();
+    public void Shutdown()
+    {
+        _noiseTimer.Stop();
+        _runner.Dispose();
+    }
 
     private static void RunOnUi(Action action)
     {
@@ -304,7 +422,12 @@ public sealed partial class ShellViewModel : ObservableObject
         _undoStack.Reset(SerializeCurrent());
         NotifyUndoRedoChanged();
         Status = $"Loaded {FileDisplayName} - {document.Nodes.Count} node(s).";
+        DocumentLoaded?.Invoke();
     }
+
+    /// <summary>A whole document was just put on the canvas (New, Open, an example) -
+    /// not an undo step. The window re-centers the view.</summary>
+    public event Action? DocumentLoaded;
 
     // ---- undo/redo (snapshot-based; one step per settled mutation burst) ----
 
@@ -398,16 +521,12 @@ public sealed partial class ShellViewModel : ObservableObject
         _shimmerTimer.Stop();
         TracePanel.IsBusy = false;
 
-        // Display-stage noise, fresh seed per publish - a live repetitive sweep.
-        var displayed = result.Trace;
-        if (_compilation is { Noise: { } noise, Instrument: { } instrument })
-        {
-            displayed = TraceNoise.Apply(
-                displayed, noise, instrument.StepAmplitudeVolts, instrument.SourceImpedanceOhms,
-                _noiseRandom.Next());
-        }
-
-        TracePanel.SetTrace(displayed, result.IsPreview);
+        // Display-stage noise: a fresh seed per publish in normal mode, the held
+        // seed in one-shot mode.
+        _lastResult = result;
+        ShowTrace(result);
+        UpdateBounce();
+        UpdateReturnLoss();
         var trace = result.Trace;
         string solver = trace.Solver == SolverPath.Chain ? "chain" : "nodal";
         Status = $"{(result.IsPreview ? "preview" : "final")}  |  {solver} solver  |  M = {trace.Grid.M}"
@@ -499,9 +618,135 @@ public sealed partial class ShellViewModel : ObservableObject
                 IsInfo: true));
         }
 
+        UpdateFeatureMap();
         SubmitLive();
         UpdatePulseProbes();
         SchedulePulse();
+        if (_compilation.Model is null)
+        {
+            UpdateBounce();
+            UpdateReturnLoss();
+        }
+    }
+
+    // ---- M6 teaching views ----
+
+    private string NodeTitle(string nodeId)
+    {
+        var node = Editor.Nodes.FirstOrDefault(n => n.Id == nodeId);
+        return node is null ? nodeId : node.Title;
+    }
+
+    /// <summary>First-pass delay map of the newest compiled model: which component
+    /// owns which stretch of trace time.</summary>
+    private void UpdateFeatureMap()
+    {
+        var compilation = _compilation;
+        _featureMap = compilation?.Model is null
+            ? null
+            : TraceFeatureMap.Build(
+                compilation.Model, compilation.ElementOrigins,
+                // Assumed opens are cable ends: the cable's own span already covers them.
+                compilation.Probes.Where(p => p.OpenEndPort is null).Select(p => (p.NodeId, p.Net)));
+        TracePanel.SetFeatureMap(_featureMap, NodeTitle);
+        UpdateTraceHighlights();
+    }
+
+    /// <summary>Canvas to trace: shade the footprint of the selected nodes and, more
+    /// strongly, of the node under the mouse.</summary>
+    private void UpdateTraceHighlights()
+    {
+        var highlights = new List<TraceHighlight>();
+        if (_featureMap is not null)
+        {
+            var hovered = Editor.HoveredNode;
+            foreach (var node in Editor.SelectedNodes)
+            {
+                if (!ReferenceEquals(node, hovered) && _featureMap.For(node.Id) is { } feature)
+                    highlights.Add(new TraceHighlight(feature.StartS, feature.EndS, IsHover: false));
+            }
+
+            if (hovered is not null && _featureMap.For(hovered.Id) is { } hoverFeature)
+                highlights.Add(new TraceHighlight(hoverFeature.StartS, hoverFeature.EndS, IsHover: true));
+        }
+
+        TracePanel.SetHighlights(highlights);
+    }
+
+    /// <summary>Trace (or bounce ray) to canvas: glow the nodes being pointed at.</summary>
+    private void ApplyNodeGlow()
+    {
+        foreach (var node in Editor.Nodes)
+        {
+            node.IsTraceHighlighted = _traceHoverNodes.Contains(node.Id)
+                || _bounceHoverNodes.Contains(node.Id);
+        }
+    }
+
+    /// <summary>Rebuild the lattice for the displayed trace (bounce tab only).</summary>
+    private void UpdateBounce()
+    {
+        if (ActiveViewIndex != BounceViewIndex)
+            return;
+        var compilation = _compilation;
+        var trace = TracePanel.Trace;
+        if (compilation?.Model is null || compilation.Instrument is null)
+        {
+            Bounce.Clear("Cannot draw the bounce diagram - fix the network issues first.");
+            return;
+        }
+
+        if (trace is null)
+        {
+            Bounce.Clear("Waiting for the first trace…");
+            return;
+        }
+
+        double maxTimeS = TracePanel.DisplayEndS;
+        var diagram = BounceDiagram.Build(
+            compilation.Model, compilation.ElementOrigins, compilation.Instrument.SourceImpedanceOhms,
+            new BounceOptions { MaxTimeS = maxTimeS });
+        if (diagram is null)
+        {
+            Bounce.Clear(
+                "A bounce diagram can only be drawn for an unbranched network - this one has a branch or a loop, "
+                + "where the rays multiply in two dimensions.\n\nHover the TDR trace instead: "
+                + "the component responsible for each feature lights up on the canvas for any topology.");
+            return;
+        }
+
+        // The trace's own extent follows slow loss creep far past the last echo; the
+        // lattice has none, so frame it on its own activity: a little past the last
+        // arrival still worth a milli-rho or two, and never less than the first round trip.
+        double lastArrivalS = diagram.PortArrivals
+            .Where(a => Math.Abs(a.Amplitude) >= 2e-3)
+            .Select(a => a.TimeS)
+            .DefaultIfEmpty(0)
+            .Max();
+        double roundTripS = 2 * diagram.Interfaces[^1].DelayS;
+        double viewS = Math.Min(maxTimeS, Math.Max(lastArrivalS * 1.15, 1.3 * roundTripS));
+        Bounce.Set(diagram, trace, viewS > 0 ? viewS : maxTimeS);
+    }
+
+    /// <summary>|Gamma(f)| of the displayed trace (return-loss tab only).</summary>
+    private void UpdateReturnLoss()
+    {
+        if (ActiveViewIndex != ReturnLossViewIndex)
+            return;
+        var compilation = _compilation;
+        if (compilation?.Model is null || compilation.Instrument is null)
+        {
+            ReturnLossView.Clear("Cannot compute the return loss - fix the network issues first.");
+            return;
+        }
+
+        var curve = TracePanel.Trace is { } trace
+            ? ReturnLoss.FromTrace(trace, compilation.Instrument)
+            : null;
+        if (curve is null)
+            ReturnLossView.Clear("Waiting for the first trace…");
+        else
+            ReturnLossView.Set(curve);
     }
 
     // ---- pulse view pipeline ----
@@ -509,24 +754,23 @@ public sealed partial class ShellViewModel : ObservableObject
     private void UpdatePulseProbes()
     {
         var probes = _compilation?.Probes ?? [];
-        Pulse.UpdateProbes([.. probes.Select(p => new PulseProbe(ProbeLabel(p.NodeId), p.NodeId))]);
+        Pulse.UpdateProbes([.. probes.Select(p => new PulseProbe(ProbeLabel(p.NodeId, p.OpenEndPort), p.NodeId))]);
     }
 
-    private string ProbeLabel(string nodeId)
+    private string ProbeLabel(string nodeId, string? openEndPort)
     {
         var node = Editor.Nodes.FirstOrDefault(n => n.Id == nodeId);
         return node switch
         {
             TdrNodeViewModel => "TDR port",
             null => nodeId,
+            _ when openEndPort is not null => $"Open (assumed) · end {openEndPort} of {node.Title}  [{nodeId}]",
             _ => $"{node.Title}  [{nodeId}]",
         };
     }
 
     private void SchedulePulse()
     {
-        if (ActiveViewIndex != 1)
-            return;
         _pulseTimer.Stop();
         _pulseTimer.Start();
     }
@@ -576,7 +820,7 @@ public sealed partial class ShellViewModel : ObservableObject
             stopwatch.Stop();
             if (version != _pulseVersion)
                 return;
-            Pulse.SetTrace(trace, compilation.Noise?.EffectiveRmsVolts ?? 0);
+            Pulse.SetTrace(trace, compilation.Noise?.EffectiveRmsVolts ?? 0, NextNoiseSeed());
             Pulse.Info =
                 $"{trace.Volts.Length} samples/period  ·  {stopwatch.Elapsed.TotalMilliseconds:0} ms"
                 + (trace.Compromised
@@ -606,6 +850,7 @@ public sealed partial class ShellViewModel : ObservableObject
         DocumentIssueKind.InvalidInstrumentValues => "invalid instrument",
         DocumentIssueKind.UnknownPresetId => "unknown preset",
         DocumentIssueKind.InvalidFaultValues => "invalid fault",
+        DocumentIssueKind.InvalidCustomCable => "invalid custom cable",
         DocumentIssueKind.UnadaptableInterface => "needs balun",
         _ => kind.ToString(),
     };

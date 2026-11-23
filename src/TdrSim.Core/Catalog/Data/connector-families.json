@@ -4,6 +4,7 @@
     {
       "id": "bnc-50",
       "name": "BNC (50 Ω)",
+      "shortName": "BNC",
       "nominalZ0Ohms": 50.0,
       "matedZ0Ohms": 50.0,
       "matedLengthMm": 20.0,
@@ -17,6 +18,7 @@
     {
       "id": "bnc-75",
       "name": "BNC (75 Ω)",
+      "shortName": "BNC75",
       "nominalZ0Ohms": 75.0,
       "matedZ0Ohms": 75.0,
       "matedLengthMm": 20.0,
@@ -30,6 +32,7 @@
     {
       "id": "f-75",
       "name": "F (75 Ω)",
+      "shortName": "F",
       "nominalZ0Ohms": 75.0,
       "matedZ0Ohms": 75.0,
       "matedLengthMm": 16.0,
@@ -43,6 +46,7 @@
     {
       "id": "n-50",
       "name": "N (50 Ω)",
+      "shortName": "N",
       "nominalZ0Ohms": 50.0,
       "matedZ0Ohms": 50.0,
       "matedLengthMm": 30.0,
@@ -56,6 +60,7 @@
     {
       "id": "sma-50",
       "name": "SMA / 3.5 mm (50 Ω)",
+      "shortName": "SMA",
       "nominalZ0Ohms": 50.0,
       "matedZ0Ohms": 50.0,
       "matedLengthMm": 16.0,
@@ -69,6 +74,7 @@
     {
       "id": "mm185",
       "name": "1.85 mm / 2.4 mm (50 Ω)",
+      "shortName": "1.85mm",
       "nominalZ0Ohms": 50.0,
       "matedZ0Ohms": 50.0,
       "matedLengthMm": 12.0,
@@ -82,6 +88,7 @@
     {
       "id": "uhf",
       "name": "UHF (PL-259/SO-239)",
+      "shortName": "UHF",
       "nominalZ0Ohms": 50.0,
       "matedZ0Ohms": 35.0,
       "matedLengthMm": 14.0,
@@ -95,6 +102,7 @@
     {
       "id": "rca",
       "name": "RCA phono",
+      "shortName": "RCA",
       "nominalZ0Ohms": 40.0,
       "matedZ0Ohms": 30.0,
       "matedLengthMm": 12.0,
@@ -108,6 +116,7 @@
     {
       "id": "rj45",
       "name": "RJ45 (8P8C modular)",
+      "shortName": "RJ45",
       "nominalZ0Ohms": 100.0,
       "matedZ0Ohms": 85.0,
       "matedLengthMm": 12.0,

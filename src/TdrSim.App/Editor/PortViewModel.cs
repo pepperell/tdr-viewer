@@ -15,6 +15,11 @@ public partial class PortViewModel(NodeViewModelBase owner, string name) : Obser
     /// <summary>"A"/"B" on two-ports, "P" on one-ports (matches DocumentPorts).</summary>
     public string Name { get; } = name;
 
+    /// <summary>What the canvas shows beside the port: the name, or on a cable end
+    /// the name plus its connector type ("A:BNC").</summary>
+    [ObservableProperty]
+    private string _label = name;
+
     /// <summary>Set by Nodify's connector control; connections draw between anchors.</summary>
     [ObservableProperty]
     private Point _anchor;

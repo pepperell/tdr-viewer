@@ -32,7 +32,7 @@ public class CatalogTests
         string[] instruments = ["tek-80e04", "tek-80e10b", "tek-1502c", "catv-75", "cable-tester"];
         Assert.Equal(instruments.Order(), BuiltIn.Instruments.Select(i => i.Id).Order());
 
-        string[] connectors = ["bnc-barrel", "f-connector", "splice-clean", "splice-corroded"];
+        string[] connectors = ["splice-clean", "splice-corroded"];
         Assert.Equal(connectors.Order(), BuiltIn.Connectors.Select(c => c.Id).Order());
 
         string[] faults = ["water-ingress", "crush", "resistive-bridge", "series-fault"];

@@ -25,6 +25,31 @@ public sealed record AttenuationTable
 public sealed record InsertionLossCoefficients(double K1, double K2, double K3);
 
 /// <summary>
+/// Raw per-unit-length line constants for a user-defined cable (SI units), with the two
+/// frequency-dependent loss terms the engine's causal models need: a skin coefficient
+/// (R_skin = Skin*sqrt(f), with its matched internal inductance) and a dielectric loss
+/// tangent. Leave both at 0 for the textbook constant-RLGC line.
+/// </summary>
+public sealed record RlgcParameters
+{
+    /// <summary>DC loop resistance, ohms/m.</summary>
+    public required double ROhmsPerM { get; init; }
+
+    public required double LHenriesPerM { get; init; }
+
+    /// <summary>DC shunt (leakage) conductance, S/m.</summary>
+    public required double GSiemensPerM { get; init; }
+
+    public required double CFaradsPerM { get; init; }
+
+    /// <summary>Skin-effect coefficient, ohms/(m*sqrt(Hz)).</summary>
+    public double SkinOhmsPerMSqrtHz { get; init; }
+
+    /// <summary>Dielectric loss tangent at 100 MHz.</summary>
+    public double TanDelta { get; init; }
+}
+
+/// <summary>
 /// Datasheet-style cable description. Derived engine quantities (skin coefficient Rs,
 /// k1/k2 fit, Djordjevic-Sarkar dielectric parameters) are computed in the engine (M1),
 /// never stored here.
@@ -60,6 +85,12 @@ public sealed record CableSpec
 
     public InsertionLossCoefficients? InsertionLossCoefficients { get; init; }
 
+    /// <summary>User-defined cables entered as raw line constants: when present, loss
+    /// (R, skin, G, tan delta) comes from here instead of an attenuation fit.
+    /// <see cref="Z0Ohms"/> and <see cref="VelocityFactor"/> stay the primary pair that
+    /// sets L and C, so a per-node Z0/VF override still works.</summary>
+    public RlgcParameters? Rlgc { get; init; }
+
     /// <summary>The connector family this cable is normally terminated with
     /// (<see cref="ConnectorFamilySpec.Id"/>), or null for bare ends (screw
     /// terminals, probed PCB traces, teaching ideals).</summary>
@@ -78,6 +109,9 @@ public sealed record ConnectorFamilySpec
 {
     public required string Id { get; init; }
     public required string Name { get; init; }
+
+    /// <summary>A few characters for port labels on the canvas ("BNC", "SMA").</summary>
+    public required string ShortName { get; init; }
 
     /// <summary>The system impedance the family is sold for (display/matching).</summary>
     public required double NominalZ0Ohms { get; init; }
@@ -168,6 +202,24 @@ public sealed record InstrumentSpec
     /// or null for bare terminals. The document can override it.</summary>
     public string? PortConnector { get; init; }
 
+    /// <summary>The instrument's own screen colours; the plots adopt them. Null = the
+    /// app's neutral scheme.</summary>
+    public InstrumentDisplaySpec? Display { get; init; }
+
+    public string? Source { get; init; }
+}
+
+/// <summary>Screen colours of an instrument's display, as "#RRGGBB".</summary>
+public sealed record InstrumentDisplaySpec
+{
+    public required string Background { get; init; }
+    public required string Trace { get; init; }
+    public required string Grid { get; init; }
+
+    /// <summary>Axis lines, tick labels and readout marks.</summary>
+    public required string Text { get; init; }
+
+    /// <summary>What the scheme is modelled on.</summary>
     public string? Source { get; init; }
 }
 

@@ -74,6 +74,50 @@ public class DocumentCompilerTests
         return max;
     }
 
+    [Fact]
+    public void UnwiredEndsOfLiveCablesAreAssumedOpenProbes()
+    {
+        // A tee with two unterminated branches, one branch closed by a real Open load,
+        // and a cable that is not connected to anything.
+        var document = Doc(
+            [
+                TdrNode(),
+                CableNode("feed", 30),
+                CableNode("left", 10),
+                CableNode("right", 20),
+                CableNode("capped", 5),
+                new DocumentNode { Id = "open", Kind = DocumentNodeKind.Load, LoadKind = LoadKind.Open },
+                CableNode("island", 5),
+            ],
+            [
+                W("tdr", "P", "feed", "A"),
+                W("feed", "B", "left", "A"),
+                W("feed", "B", "right", "B"), // wired backwards: its open end is A
+                W("feed", "B", "capped", "A"),
+                W("capped", "B", "open", "P"),
+            ]);
+
+        var compilation = DocumentCompiler.Compile(document, LosslessCatalog);
+        Assert.False(compilation.HasFatalIssues);
+
+        var assumed = compilation.Probes.Where(p => p.OpenEndPort is not null).ToList();
+        Assert.Equal([("left", "B"), ("right", "A")], assumed.Select(p => (p.NodeId, p.OpenEndPort!)).ToArray());
+        Assert.Contains(compilation.Probes, p => p is { NodeId: "open", OpenEndPort: null });
+
+        // Electrically nothing changed: wiring a real Open load there gives the same trace.
+        var withLoads = document with
+        {
+            Nodes =
+            [
+                .. document.Nodes,
+                new DocumentNode { Id = "o1", Kind = DocumentNodeKind.Load, LoadKind = LoadKind.Open },
+                new DocumentNode { Id = "o2", Kind = DocumentNodeKind.Load, LoadKind = LoadKind.Open },
+            ],
+            Wires = [.. document.Wires, W("left", "B", "o1", "P"), W("right", "A", "o2", "P")],
+        };
+        Assert.True(MaxRhoDifference(SimulateDoc(document, LosslessCatalog), SimulateDoc(withLoads, LosslessCatalog)) < 1e-9);
+    }
+
     // ---- physics through the document path ----
 
     [Fact]

@@ -9,6 +9,13 @@
       "sourceImpedanceOhms": 50,
       "noiseFloorMillivolts": 0.4,
       "portConnector": "sma-50",
+      "display": {
+        "background": "#000000",
+        "trace": "#F2E33A",
+        "grid": "#4A4A4A",
+        "text": "#C8C8C8",
+        "source": "Tektronix DSA8000-series sampling mainframe: colour LCD, black graticule, grey grid, channel 1 in yellow"
+      },
       "source": "Tektronix 80E04 datasheet: 250 mV into 50 ohm, 23 ps incident; ~400 uV RMS single-sweep noise typical"
     },
     {
@@ -19,6 +26,13 @@
       "sourceImpedanceOhms": 50,
       "noiseFloorMillivolts": 0.5,
       "portConnector": "mm185",
+      "display": {
+        "background": "#000000",
+        "trace": "#F2E33A",
+        "grid": "#4A4A4A",
+        "text": "#C8C8C8",
+        "source": "Tektronix DSA8000-series sampling mainframe: colour LCD, black graticule, grey grid, channel 1 in yellow"
+      },
       "source": "Tektronix 80E10B datasheet: 250 mV, 12 ps incident; wider bandwidth, slightly higher noise than 80E04"
     },
     {
@@ -29,6 +43,13 @@
       "sourceImpedanceOhms": 50,
       "noiseFloorMillivolts": 2.0,
       "portConnector": "bnc-50",
+      "display": {
+        "background": "#B4BE8C",
+        "trace": "#1B2330",
+        "grid": "#8E9870",
+        "text": "#1B2330",
+        "source": "Tektronix 1502C: backlit supertwist LCD, dark pixels on a yellow-green field"
+      },
       "source": "Tektronix 1502C datasheet: 300 mV nominal into 50 ohm, 200 ps system; portable-class ~2 mV screen noise"
     },
     {
@@ -39,6 +60,13 @@
       "sourceImpedanceOhms": 75,
       "noiseFloorMillivolts": 2.5,
       "portConnector": "f-75",
+      "display": {
+        "background": "#C2CCC6",
+        "trace": "#141A18",
+        "grid": "#98A29C",
+        "text": "#141A18",
+        "source": "representative field CATV TDR: monochrome grey-green LCD, dark trace"
+      },
       "source": "representative 75 ohm instrument"
     },
     {
@@ -49,6 +77,13 @@
       "sourceImpedanceOhms": 50,
       "noiseFloorMillivolts": 10.0,
       "portConnector": "rj45",
+      "display": {
+        "background": "#10233F",
+        "trace": "#FFD23F",
+        "grid": "#2D4A72",
+        "text": "#D6E2F0",
+        "source": "representative modern handheld certifier: colour LCD, dark blue plot, yellow trace"
+      },
       "source": "representative handheld class (datasheets specify pulse width, not rise time); coarse front end"
     }
   ]

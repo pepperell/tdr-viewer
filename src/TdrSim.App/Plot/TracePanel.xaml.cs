@@ -20,8 +20,17 @@ public partial class TracePanel : UserControl
     private TracePanelViewModel? _vm;
     private ScottPlot.Plottables.VerticalLine? _cursorA;
     private ScottPlot.Plottables.VerticalLine? _cursorB;
+    private readonly List<IPlottable> _highlightPlottables = [];
     private double[]? _plottedYs;
     private char _dragging;
+    private ScottPlot.Plottables.VerticalLine? _hoverLine;
+    private ScottPlot.Plottables.Marker? _hoverMarker;
+    private double _hoverTimeS = double.NaN;
+
+    // Axis units follow the displayed range (30 000 ns reads as 30 µs); set per replot.
+    private UnitScale _timeUnit = new(1e9, "ns");
+    private UnitScale _distanceUnit = new(1, "m");
+    private UnitScale _voltUnit = new(1e3, "mV");
 
     public TracePanel()
     {
@@ -31,6 +40,13 @@ public partial class TracePanel : UserControl
         ThePlot.PreviewMouseLeftButtonDown += OnPlotMouseDown;
         ThePlot.PreviewMouseMove += OnPlotMouseMove;
         ThePlot.PreviewMouseLeftButtonUp += OnPlotMouseUp;
+        ThePlot.MouseLeave += (_, _) =>
+        {
+            _vm?.ClearHover();
+            _hoverTimeS = double.NaN;
+            ShowHoverCursor();
+            ThePlot.Refresh();
+        };
         ThePlot.Plot.XLabel("distance (m)");
         ThePlot.Plot.YLabel("Ω");
         ThePlot.Refresh();
@@ -41,6 +57,7 @@ public partial class TracePanel : UserControl
         if (_vm is not null)
         {
             _vm.TraceChanged -= Replot;
+            _vm.HighlightsChanged -= RedrawHighlights;
             _vm.PropertyChanged -= OnVmPropertyChanged;
         }
 
@@ -48,6 +65,7 @@ public partial class TracePanel : UserControl
         if (_vm is not null)
         {
             _vm.TraceChanged += Replot;
+            _vm.HighlightsChanged += RedrawHighlights;
             _vm.PropertyChanged += OnVmPropertyChanged;
         }
     }
@@ -127,6 +145,11 @@ public partial class TracePanel : UserControl
         var plot = ThePlot.Plot;
         plot.Clear();
         _cursorA = _cursorB = null;
+        _hoverLine = null;
+        _hoverMarker = null;
+        _highlightPlottables.Clear();
+        var theme = _vm?.Theme ?? PlotTheme.Default;
+        theme.Apply(plot);
 
         var trace = _vm?.Trace;
         if (trace is null)
@@ -135,6 +158,16 @@ public partial class TracePanel : UserControl
             return;
         }
 
+        _timeUnit = UnitScale.Time(_vm!.DisplayEndS);
+        _distanceUnit = UnitScale.Distance(_vm.DisplayEndS * MetersPerSecond());
+        double maxVolts = 0;
+        foreach (double v in (_vm.CleanTrace ?? trace).Volts)
+            maxVolts = Math.Max(maxVolts, Math.Abs(v));
+        _voltUnit = UnitScale.Voltage(maxVolts);
+
+        // Canvas-driven shading goes underneath everything.
+        AddHighlights();
+
         // Reference first so the live trace draws over it.
         if (_vm!.ReferenceTrace is { } reference)
         {
@@ -142,7 +175,7 @@ public partial class TracePanel : UserControl
             var refSignal = plot.Add.Signal(YArray(reference), refDx);
             refSignal.Data.XOffset = refX0;
             refSignal.LineWidth = 1.5f;
-            refSignal.Color = Colors.Gray.WithAlpha(0.55);
+            refSignal.Color = theme.Text.WithAlpha(0.45);
         }
 
         (double dx, double x0) = XScale(trace);
@@ -150,11 +183,16 @@ public partial class TracePanel : UserControl
         var signal = plot.Add.Signal(_plottedYs, dx);
         signal.Data.XOffset = x0;
         signal.LineWidth = 2;
+        signal.Color = theme.Trace;
 
-        plot.XLabel(_vm.XMode == TraceXMode.TimeNs ? "time (ns)" : "distance (m)");
+        AddPeelOverlay();
+
+        plot.XLabel(_vm.XMode == TraceXMode.TimeNs
+            ? $"time ({_timeUnit.Unit})"
+            : $"distance ({_distanceUnit.Unit})");
         plot.YLabel(_vm.YMode switch
         {
-            TraceYMode.MilliVolts => "mV",
+            TraceYMode.MilliVolts => _voltUnit.Unit,
             TraceYMode.MilliRho => "mρ",
             _ => "Ω",
         });
@@ -162,13 +200,124 @@ public partial class TracePanel : UserControl
         if (_vm.CursorsEnabled)
             AddCursorLines();
 
+        ShowHoverCursor(); // survives the replot (noise re-rolls several times a second)
         AutoRange();
+        ThePlot.Refresh();
+    }
+
+    /// <summary>The hover cursor: a dashed line under the mouse and a dot riding the
+    /// trace there. Hidden when <see cref="_hoverTimeS"/> is NaN.</summary>
+    private void ShowHoverCursor()
+    {
+        var plot = ThePlot.Plot;
+        if (double.IsNaN(_hoverTimeS) || _vm?.Trace is null)
+        {
+            if (_hoverLine is not null)
+                plot.Remove(_hoverLine);
+            if (_hoverMarker is not null)
+                plot.Remove(_hoverMarker);
+            _hoverLine = null;
+            _hoverMarker = null;
+            return;
+        }
+
+        double x = XFromTime(_hoverTimeS);
+        if (_hoverLine is null || _hoverMarker is null)
+        {
+            _hoverLine = plot.Add.VerticalLine(x);
+            var mark = _vm.Theme.Text;
+            _hoverLine.Color = mark.WithAlpha(0.6);
+            _hoverLine.LineWidth = 1;
+            _hoverLine.LinePattern = LinePattern.Dashed;
+            _hoverMarker = plot.Add.Marker(x, 0, MarkerShape.FilledCircle, 8, mark);
+        }
+
+        _hoverLine.X = x;
+        // YAt is in the mode's base unit (mV); the plot may be in V or µV.
+        double y = _vm.YAt(_hoverTimeS)
+            * (_vm.YMode == TraceYMode.MilliVolts ? _voltUnit.Factor / 1e3 : 1);
+        _hoverMarker.Location = new Coordinates(x, y);
+    }
+
+    /// <summary>The de-ghosted impedance profile over the raw trace (Ω mode only):
+    /// solid while trustworthy, dimmed past the point where peeling gives up.</summary>
+    private void AddPeelOverlay()
+    {
+        if (_vm is not { YMode: TraceYMode.Ohms, Peel: { } peel } || peel.Ohms.Length < 2)
+            return;
+
+        double dx = XFromTime(peel.DtS);
+        var color = Colors.DarkOrange;
+        int reliable = Math.Clamp(peel.ReliableCount, 0, peel.Ohms.Length);
+        if (reliable >= 2)
+        {
+            var solid = ThePlot.Plot.Add.Signal(peel.Ohms[..reliable], dx);
+            solid.Data.XOffset = XFromTime(peel.TimeOf(0));
+            solid.LineWidth = 2;
+            solid.Color = color;
+        }
+
+        if (reliable < peel.Ohms.Length)
+        {
+            int from = Math.Max(0, reliable - 1);
+            if (peel.Ohms.Length - from >= 2)
+            {
+                var faded = ThePlot.Plot.Add.Signal(peel.Ohms[from..], dx);
+                faded.Data.XOffset = XFromTime(peel.TimeOf(from));
+                faded.LineWidth = 1.5f;
+                faded.Color = color.WithAlpha(0.3);
+            }
+
+            var boundary = ThePlot.Plot.Add.VerticalLine(XFromTime(peel.TimeOf(from)));
+            boundary.Color = color.WithAlpha(0.7);
+            boundary.LineWidth = 1;
+            boundary.LinePattern = LinePattern.Dotted;
+        }
+    }
+
+    // ---- cross-highlighting ----
+
+    private void AddHighlights()
+    {
+        if (_vm is null || _vm.Trace is null)
+            return;
+        var plot = ThePlot.Plot;
+        foreach (var highlight in _vm.Highlights)
+        {
+            var color = highlight.IsHover ? Colors.Orange : Colors.DodgerBlue;
+            if (highlight.IsPoint)
+            {
+                var line = plot.Add.VerticalLine(XFromTime(highlight.StartS));
+                line.Color = color.WithAlpha(highlight.IsHover ? 0.95 : 0.7);
+                line.LineWidth = highlight.IsHover ? 2.5f : 2;
+                line.LinePattern = LinePattern.Dashed;
+                _highlightPlottables.Add(line);
+            }
+            else
+            {
+                var span = plot.Add.HorizontalSpan(XFromTime(highlight.StartS), XFromTime(highlight.EndS));
+                span.FillStyle.Color = color.WithAlpha(highlight.IsHover ? 0.30 : 0.16);
+                span.LineStyle.Color = color.WithAlpha(highlight.IsHover ? 0.9 : 0.5);
+                span.LineStyle.Width = 1;
+                _highlightPlottables.Add(span);
+            }
+        }
+    }
+
+    /// <summary>Hover/selection changed but the data did not: swap the shading in
+    /// place - no refit, so the always-fit view stays put.</summary>
+    private void RedrawHighlights()
+    {
+        foreach (var plottable in _highlightPlottables)
+            ThePlot.Plot.Remove(plottable);
+        _highlightPlottables.Clear();
+        AddHighlights();
         ThePlot.Refresh();
     }
 
     private double[] YArray(TdrTrace trace) => _vm!.YMode switch
     {
-        TraceYMode.MilliVolts => Scaled(trace.Volts, 1e3),
+        TraceYMode.MilliVolts => Scaled(trace.Volts, _voltUnit.Factor),
         TraceYMode.MilliRho => Scaled(trace.Rho, 1e3),
         _ => trace.Ohms,
     };
@@ -187,39 +336,38 @@ public partial class TracePanel : UserControl
     /// </summary>
     private void AutoRange()
     {
-        var trace = _vm!.Trace!;
-        (double dx, double x0) = XScale(trace);
-
-        double settledRho = trace.Rho[^1];
-        int last = trace.Rho.Length - 1;
-        while (last > 1 && Math.Abs(trace.Rho[last] - settledRho) < 1e-3)
-            last--;
-        int idx = Math.Min(last + 16, trace.Rho.Length - 1);
-        double xMax = Math.Max((x0 + dx * idx) * 1.15, (x0 + dx * (trace.Rho.Length - 1)) * 0.02);
+        double xMax = XFromTime(_vm!.DisplayEndS);
         ThePlot.Plot.Axes.SetLimitsX(-0.03 * xMax, xMax);
         RefitY();
     }
 
     private void RefitY()
     {
-        var trace = _vm!.Trace!;
+        // Fit on the noise-free trace plus a fixed allowance for the noise, so the
+        // axis holds still while the noise is re-rolled several times a second.
+        var clean = _vm!.CleanTrace ?? _vm.Trace!;
         if (_vm.YMode == TraceYMode.Ohms)
         {
             // Ohms near an open explode (rho -> 1): pin to 4x the reference impedance.
-            double zRef = trace.Ohms[0];
+            double zRef = clean.Ohms[0];
             ThePlot.Plot.Axes.SetLimitsY(-0.1 * zRef, 4 * zRef);
             return;
         }
 
+        double[] cleanYs = YArray(clean);
         double min = double.PositiveInfinity;
         double max = double.NegativeInfinity;
-        foreach (double v in _plottedYs!)
+        foreach (double v in cleanYs)
         {
             min = Math.Min(min, v);
             max = Math.Max(max, v);
         }
 
-        double pad = Math.Max((max - min) * 0.08, 1e-6);
+        // The exact noise RMS in plotted units; 4 sigma covers the peaks.
+        double sigma = _vm.YMode == TraceYMode.MilliVolts
+            ? _voltUnit.Factor * _vm.NoiseRmsVolts
+            : 1e3 * _vm.NoiseRmsRho;
+        double pad = Math.Max((max - min) * 0.08, 1e-6) + 4 * sigma;
         ThePlot.Plot.Axes.SetLimitsY(min - pad, max + pad);
     }
 
@@ -285,8 +433,23 @@ public partial class TracePanel : UserControl
 
     private void OnPlotMouseMove(object sender, MouseEventArgs e)
     {
-        if (_dragging == '\0' || _vm?.Trace is not { } trace)
+        if (_vm?.Trace is not { } trace)
             return;
+
+        if (_dragging == '\0')
+        {
+            // Not dragging a cursor: report what the trace under the mouse is.
+            var pixel = PixelOf(e);
+            var at = ThePlot.Plot.GetCoordinates(pixel);
+            var offset = ThePlot.Plot.GetCoordinates(
+                new Pixel(pixel.X + (float)(HitTestPx * ThePlot.DisplayScale), pixel.Y));
+            double hoverS = TimeFromX(at.X);
+            _hoverTimeS = hoverS >= trace.TimeS[0] && hoverS <= trace.TimeS[^1] ? hoverS : double.NaN;
+            _vm.SetHover(hoverS, Math.Abs(TimeFromX(offset.X) - hoverS));
+            ShowHoverCursor();
+            ThePlot.Refresh();
+            return;
+        }
 
         var coordinates = ThePlot.Plot.GetCoordinates(PixelOf(e));
         double timeS = Math.Clamp(TimeFromX(coordinates.X), trace.TimeS[0], trace.TimeS[^1]);
@@ -318,13 +481,15 @@ public partial class TracePanel : UserControl
 
     private double MetersPerSecond() => _vm!.DisplayVf * ComplexMath.C0 / 2;
 
-    private (double Dx, double X0) XScale(TdrTrace trace) => _vm!.XMode == TraceXMode.TimeNs
-        ? (trace.Grid.DtS * 1e9, trace.TimeS[0] * 1e9)
-        : (trace.Grid.DtS * MetersPerSecond(), trace.TimeS[0] * MetersPerSecond());
+    /// <summary>Plotted x units per second of trace time, in the current x mode.</summary>
+    private double XPerSecond() => _vm!.XMode == TraceXMode.TimeNs
+        ? _timeUnit.Factor
+        : MetersPerSecond() * _distanceUnit.Factor;
 
-    private double XFromTime(double timeS)
-        => _vm!.XMode == TraceXMode.TimeNs ? timeS * 1e9 : timeS * MetersPerSecond();
+    private (double Dx, double X0) XScale(TdrTrace trace)
+        => (trace.Grid.DtS * XPerSecond(), trace.TimeS[0] * XPerSecond());
 
-    private double TimeFromX(double x)
-        => _vm!.XMode == TraceXMode.TimeNs ? x * 1e-9 : x / MetersPerSecond();
+    private double XFromTime(double timeS) => timeS * XPerSecond();
+
+    private double TimeFromX(double x) => x / XPerSecond();
 }

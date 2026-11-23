@@ -193,6 +193,39 @@ public sealed partial class InstrumentViewModel : ObservableObject
     [ObservableProperty]
     private int _averagingSweeps = 1;
 
+    // ---- sweep mode: display noise only ----
+
+    public const double DefaultNoiseRefreshHz = 4;
+
+    private double _noiseRefreshHz = DefaultNoiseRefreshHz;
+
+    /// <summary>One shot: the noise is a single frozen acquisition. Otherwise
+    /// (normal) it is re-rolled <see cref="NoiseRefreshHz"/> times a second.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsNormalSweep))]
+    private bool _oneShot;
+
+    public bool IsNormalSweep
+    {
+        get => !OneShot;
+        set => OneShot = !value;
+    }
+
+    /// <summary>Normal-mode noise refresh rate, 0.5-30 per second.</summary>
+    public double NoiseRefreshHz
+    {
+        get => _noiseRefreshHz;
+        set => SetProperty(ref _noiseRefreshHz, double.IsFinite(value)
+            ? Math.Clamp(Math.Round(value, 1), 0.5, 30)
+            : DefaultNoiseRefreshHz);
+    }
+
+    /// <summary>One-shot mode: take a fresh acquisition (new noise).</summary>
+    public event Action? ShotRequested;
+
+    [RelayCommand]
+    private void NewShot() => ShotRequested?.Invoke();
+
     public InstrumentDocument ToDocument() => new()
     {
         PresetId = _presetId,
@@ -202,6 +235,8 @@ public sealed partial class InstrumentViewModel : ObservableObject
         NoiseRmsMillivolts = NoiseRmsMillivolts,
         AveragingSweeps = AveragingSweeps == 1 ? null : AveragingSweeps,
         PortConnectorId = _portConnectorId,
+        OneShot = OneShot ? true : null,
+        NoiseRefreshHz = NoiseRefreshHz == DefaultNoiseRefreshHz ? null : NoiseRefreshHz,
     };
 
     public void LoadDocument(InstrumentDocument document)
@@ -214,6 +249,8 @@ public sealed partial class InstrumentViewModel : ObservableObject
         NoiseRmsMillivolts = document.NoiseRmsMillivolts;
         AveragingSweeps = document.AveragingSweeps ?? 1;
         _portConnectorId = document.PortConnectorId;
+        OneShot = document.OneShot ?? false;
+        NoiseRefreshHz = document.NoiseRefreshHz ?? DefaultNoiseRefreshHz;
         NotifyEffectiveValues();
     }
 }

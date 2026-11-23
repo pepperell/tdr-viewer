@@ -30,6 +30,9 @@ public enum DocumentIssueKind
     /// <summary>Bad fault parameters (scale, resistance, derived VF out of range).</summary>
     InvalidFaultValues,
 
+    /// <summary>A user-defined cable in use has unusable values or a clashing id.</summary>
+    InvalidCustomCable,
+
     /// <summary>Advisory: two connectorized ends meet whose families cannot be joined
     /// by an RF adapter (balanced vs coax needs a balun); they are joined ideally.</summary>
     UnadaptableInterface,
@@ -50,8 +53,11 @@ public sealed record DocumentIssue
         and not DocumentIssueKind.UnadaptableInterface;
 }
 
-/// <summary>A net the pulse view can probe, keyed by the document node sitting on it.</summary>
-public sealed record DocumentProbe(string NodeId, NodeId Net);
+/// <summary>A net the pulse view can probe, keyed by the document node sitting on it.
+/// <paramref name="OpenEndPort"/> is set for an assumed open: the unwired end ("A" or
+/// "B") of a cable that is otherwise connected to the source - electrically an open
+/// circuit, exactly as if an Open load were wired there.</summary>
+public sealed record DocumentProbe(string NodeId, NodeId Net, string? OpenEndPort = null);
 
 public sealed record DocumentCompilation
 {
@@ -60,6 +66,12 @@ public sealed record DocumentCompilation
     /// <summary>Null when any fatal issue is present.</summary>
     public required NetworkModel? Model { get; init; }
 
+    /// <summary>One entry per <see cref="NetworkModel.Elements"/> entry, same indexing
+    /// (entry 0 is the TDR node for the SourcePort); empty when there is no model.
+    /// A parallel list rather than a dictionary: elements are records, so two identical
+    /// parallel cables compare equal and could not both be keys.</summary>
+    public IReadOnlyList<ElementOrigin> ElementOrigins { get; init; } = [];
+
     /// <summary>Null when the instrument preset or its overrides are unusable.</summary>
     public required InstrumentSettings? Instrument { get; init; }
 
@@ -67,7 +79,8 @@ public sealed record DocumentCompilation
     public required TraceNoiseSettings? Noise { get; init; }
 
     /// <summary>Observable points for the pulse view (TDR port, loads, junctions,
-    /// bridge faults), in document order; empty when there is no model.</summary>
+    /// bridge faults, and the assumed open at every unwired end of a live cable), in
+    /// document order; empty when there is no model.</summary>
     public required IReadOnlyList<DocumentProbe> Probes { get; init; }
 
     /// <summary>One line per automatically inserted connector interface (mated pairs,
@@ -91,6 +104,43 @@ public static class DocumentCompiler
     public static DocumentCompilation Compile(ProjectDocument document, ComponentCatalog catalog)
     {
         var issues = new List<DocumentIssue>();
+
+        // User-defined cables resolve by id ahead of the catalog. A broken definition
+        // is reported once, against the nodes that use it, and resolves to nothing.
+        var customCables = document.CustomCables ?? [];
+        var invalidCustom = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var custom in customCables)
+        {
+            var problems = CustomCable.Validate(custom).ToList();
+            if (catalog.Cables.Any(c => c.Id == custom.Id) || customCables.Count(c => c.Id == custom.Id) > 1)
+                problems.Add($"cable '{custom.Id}': id clashes with another cable");
+            if (custom.DefaultConnector is { } dc && dc != "none"
+                && catalog.ConnectorFamilies.All(f => f.Id != dc))
+            {
+                problems.Add($"cable '{custom.Id}': unknown default connector '{dc}'");
+            }
+
+            if (problems.Count == 0 || !invalidCustom.Add(custom.Id))
+                continue;
+            var users = document.Nodes.Where(n => n.CablePresetId == custom.Id).Select(n => n.Id).ToList();
+            if (users.Count > 0)
+            {
+                issues.Add(new DocumentIssue
+                {
+                    Kind = DocumentIssueKind.InvalidCustomCable,
+                    Message = $"Custom cable '{custom.Name}' is unusable: {string.Join("; ", problems)}.",
+                    NodeIds = users,
+                });
+            }
+        }
+
+        CableSpec? FindCable(string? id)
+        {
+            if (id is null || invalidCustom.Contains(id))
+                return null;
+            return customCables.FirstOrDefault(c => c.Id == id)
+                ?? catalog.Cables.FirstOrDefault(c => c.Id == id);
+        }
 
         // Electrical nets by union-find: every (node, port) pair is a terminal, every
         // wire unions its two terminals, and each surviving class is one electrical
@@ -168,9 +218,7 @@ public static class DocumentCompiler
                     familyId = document.Instrument.PortConnectorId ?? preset?.PortConnector;
                     break;
                 case DocumentNodeKind.Cable:
-                    var spec = node.CablePresetId is null
-                        ? null
-                        : catalog.Cables.FirstOrDefault(c => c.Id == node.CablePresetId);
+                    var spec = FindCable(node.CablePresetId);
                     familyId = (port == DocumentPorts.A ? node.ConnectorAId : node.ConnectorBId)
                         ?? spec?.DefaultConnector;
                     break;
@@ -328,7 +376,7 @@ public static class DocumentCompiler
 
         var instrument = ResolveInstrument(document.Instrument, catalog, issues);
         var noise = ResolveNoise(document.Instrument, catalog, issues);
-        var emitted = EmitElements(document, catalog, NetOfFinal, issues);
+        var emitted = EmitElements(document, catalog, FindCable, invalidCustom, NetOfFinal, issues);
         emitted.AddRange(interfaceElements);
 
         // Connectivity from the TDR's net: islands are advisory (their elements are
@@ -336,6 +384,7 @@ public static class DocumentCompiler
         // instrument simply don't show up on the trace.
         NetworkModel? model = null;
         var probes = new List<DocumentProbe>();
+        var origins = new List<ElementOrigin>();
         if (tdrs.Count == 1)
         {
             var sourceNet = NetOfFinal(tdrs[0].Id, DocumentPorts.P);
@@ -343,14 +392,41 @@ public static class DocumentCompiler
                 emitted, sourceNet, totalNets, issues, out var reachableNets);
             if (!issues.Any(i => i.IsFatal))
             {
-                connected.Insert(0, new SourcePort(sourceNet));
-                model = new NetworkModel { Elements = connected };
+                var interfaceSet = new HashSet<Element>(ReferenceEqualityComparer.Instance);
+                foreach (var (_, element) in interfaceElements)
+                    interfaceSet.Add(element);
+
+                var elements = new List<Element>(connected.Count + 1) { new SourcePort(sourceNet) };
+                origins.Add(new ElementOrigin(tdrs[0].Id, IsInterface: false));
+                foreach (var (node, element) in connected)
+                {
+                    elements.Add(element);
+                    origins.Add(new ElementOrigin(node.Id, interfaceSet.Contains(element)));
+                }
+
+                model = new NetworkModel { Elements = elements };
 
                 probes.Add(new DocumentProbe(tdrs[0].Id, sourceNet));
                 foreach (var node in document.Nodes)
                 {
                     bool isProbeKind = node.Kind is DocumentNodeKind.Load or DocumentNodeKind.Junction
                         || (node.Kind == DocumentNodeKind.Fault && node.FaultKind == Project.FaultKind.ShuntBridge);
+                    if (node.Kind == DocumentNodeKind.Cable)
+                    {
+                        // An unwired cable end on a live cable is an assumed open load.
+                        foreach (string port in new[] { DocumentPorts.A, DocumentPorts.B })
+                        {
+                            var endNet = NetOfFinal(node.Id, port);
+                            if (termsByClass[Find(terminals[(node.Id, port)])].Count == 1
+                                && reachableNets.Contains(endNet.Value))
+                            {
+                                probes.Add(new DocumentProbe(node.Id, endNet, port));
+                            }
+                        }
+
+                        continue;
+                    }
+
                     if (!isProbeKind)
                         continue;
                     var net = NetOfFinal(node.Id, DocumentPorts.P);
@@ -364,6 +440,7 @@ public static class DocumentCompiler
         {
             Issues = issues,
             Model = model,
+            ElementOrigins = origins,
             Instrument = instrument,
             Noise = noise,
             Probes = probes,
@@ -430,6 +507,8 @@ public static class DocumentCompiler
     private static List<(DocumentNode Node, Element Element)> EmitElements(
         ProjectDocument document,
         ComponentCatalog catalog,
+        Func<string?, CableSpec?> findCable,
+        HashSet<string> invalidCustom,
         Func<string, string, NodeId> netOf,
         List<DocumentIssue> issues)
     {
@@ -445,13 +524,13 @@ public static class DocumentCompiler
                 {
                     var netA = netOf(node.Id, DocumentPorts.A);
                     var netB = netOf(node.Id, DocumentPorts.B);
-                    var spec = node.CablePresetId is null
-                        ? null
-                        : catalog.Cables.FirstOrDefault(c => c.Id == node.CablePresetId);
+                    var spec = findCable(node.CablePresetId);
                     bool ok = true;
                     if (spec is null)
                     {
-                        issues.Add(Issue(DocumentIssueKind.UnknownPresetId,
+                        // A broken custom cable already has its own issue.
+                        if (node.CablePresetId is null || !invalidCustom.Contains(node.CablePresetId))
+                            issues.Add(Issue(DocumentIssueKind.UnknownPresetId,
                             $"Cable '{node.Id}' references unknown preset '{node.CablePresetId}'.", node));
                         ok = false;
                     }
@@ -503,14 +582,14 @@ public static class DocumentCompiler
                     if (spec is null)
                     {
                         issues.Add(Issue(DocumentIssueKind.UnknownPresetId,
-                            $"Connector '{node.Id}' references unknown preset '{node.ConnectorPresetId}'.", node));
+                            $"Splice '{node.Id}' references unknown preset '{node.ConnectorPresetId}'.", node));
                         ok = false;
                     }
 
                     if (netA == netB)
                     {
                         issues.Add(Issue(DocumentIssueKind.SelfLoop,
-                            $"Connector '{node.Id}' has both ends wired to the same electrical node.", node));
+                            $"Splice '{node.Id}' has both ends wired to the same electrical node.", node));
                         ok = false;
                     }
 
@@ -520,7 +599,7 @@ public static class DocumentCompiler
                 }
 
                 case DocumentNodeKind.Fault:
-                    EmitFault(node, catalog, netOf, issues, emitted);
+                    EmitFault(node, findCable, invalidCustom, netOf, issues, emitted);
                     break;
 
                 case DocumentNodeKind.Load:
@@ -559,7 +638,8 @@ public static class DocumentCompiler
 
     private static void EmitFault(
         DocumentNode node,
-        ComponentCatalog catalog,
+        Func<string?, CableSpec?> findCable,
+        HashSet<string> invalidCustom,
         Func<string, string, NodeId> netOf,
         List<DocumentIssue> issues,
         List<(DocumentNode Node, Element Element)> emitted)
@@ -615,13 +695,12 @@ public static class DocumentCompiler
             {
                 var netA = netOf(node.Id, DocumentPorts.A);
                 var netB = netOf(node.Id, DocumentPorts.B);
-                var baseSpec = node.CablePresetId is null
-                    ? null
-                    : catalog.Cables.FirstOrDefault(c => c.Id == node.CablePresetId);
+                var baseSpec = findCable(node.CablePresetId);
                 bool ok = true;
                 if (baseSpec is null)
                 {
-                    issues.Add(Issue(DocumentIssueKind.UnknownPresetId,
+                    if (node.CablePresetId is null || !invalidCustom.Contains(node.CablePresetId))
+                        issues.Add(Issue(DocumentIssueKind.UnknownPresetId,
                         $"Fault section '{node.Id}' references unknown base cable '{node.CablePresetId}'.", node));
                     ok = false;
                 }
@@ -671,7 +750,7 @@ public static class DocumentCompiler
     /// <summary>Returns the elements reachable from the source net; each unreachable
     /// island becomes one advisory issue and its elements are dropped. Also reports
     /// which nets are in the source's component (for probe points).</summary>
-    private static List<Element> PartitionByConnectivity(
+    private static List<(DocumentNode Node, Element Element)> PartitionByConnectivity(
         List<(DocumentNode Node, Element Element)> emitted,
         NodeId sourceNet,
         int netCount,
@@ -704,7 +783,7 @@ public static class DocumentCompiler
             if (Find(i) == sourceComponent)
                 reachableNets.Add(i);
         }
-        var connected = new List<Element>();
+        var connected = new List<(DocumentNode Node, Element Element)>();
         var islands = new Dictionary<int, List<(DocumentNode Node, Element Element)>>();
         foreach (var (node, element) in emitted)
         {
@@ -717,7 +796,7 @@ public static class DocumentCompiler
             };
             if (Find(net) == sourceComponent)
             {
-                connected.Add(element);
+                connected.Add((node, element));
             }
             else
             {
