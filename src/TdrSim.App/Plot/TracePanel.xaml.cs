@@ -348,9 +348,23 @@ public partial class TracePanel : UserControl
         var clean = _vm!.CleanTrace ?? _vm.Trace!;
         if (_vm.YMode == TraceYMode.Ohms)
         {
-            // Ohms near an open explode (rho -> 1): pin to 4x the reference impedance.
+            // Zoom to the data with a margin, but never show more than the classic
+            // 0 to 4x Zref window - ohms near an open explode as rho -> 1, and the
+            // clamp keeps such traces exactly where they always were.
             double zRef = clean.Ohms[0];
-            ThePlot.Plot.Axes.SetLimitsY(-0.1 * zRef, 4 * zRef);
+            double lo = double.PositiveInfinity;
+            double hi = double.NegativeInfinity;
+            foreach (double v in clean.Ohms)
+            {
+                lo = Math.Min(lo, v);
+                hi = Math.Max(hi, v);
+            }
+
+            double sigmaOhms = 2 * zRef * _vm.NoiseRmsRho; // d(ohms)/d(rho) near rho = 0
+            double margin = Math.Max(0.1 * (hi - lo), 0.02 * zRef) + 4 * sigmaOhms;
+            ThePlot.Plot.Axes.SetLimitsY(
+                Math.Max(lo - margin, 0),
+                Math.Min(hi + margin, 4 * zRef));
             return;
         }
 

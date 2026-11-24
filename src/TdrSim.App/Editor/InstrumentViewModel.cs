@@ -33,6 +33,11 @@ public sealed partial class InstrumentViewModel : ObservableObject
             if (value is null || value.Id == _presetId)
                 return;
             _presetId = value.Id;
+
+            // A new instrument brings its own step generator: any rise-time override
+            // (usually a leftover toolbar-slider drag) resets to the preset's value.
+            RiseTimePsOverride = null;
+
             OnPropertyChanged();
             OnPropertyChanged(nameof(EffectiveRiseTimePs));
             OnPropertyChanged(nameof(RiseTimeLog));
