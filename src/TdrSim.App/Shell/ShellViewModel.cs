@@ -18,8 +18,15 @@ namespace TdrSim.App.Shell;
 /// listing the automatically inserted connector hardware.</summary>
 public sealed record IssueBadge(string Label, string Tooltip, bool IsFatal, bool IsInfo = false);
 
+/// <summary>A recent-files menu entry: the file name is the header, the full path the tooltip.</summary>
+public sealed record RecentFile(string Path)
+{
+    public string Name => System.IO.Path.GetFileName(Path);
+}
+
 public sealed partial class ShellViewModel : ObservableObject
 {
+    private readonly AppSettings _settings;
     private readonly ComponentCatalog _catalog;
     private readonly SimulationSession _session = new();
     private readonly LiveTraceRunner _runner;
@@ -41,8 +48,9 @@ public sealed partial class ShellViewModel : ObservableObject
     private IReadOnlyList<string> _traceHoverNodes = [];
     private IReadOnlyList<string> _bounceHoverNodes = [];
 
-    public ShellViewModel()
+    public ShellViewModel(AppSettings settings)
     {
+        _settings = settings;
         _catalog = CatalogLoader.LoadEmbedded();
         Instrument = new InstrumentViewModel(_catalog);
         Editor = new EditorViewModel(_catalog, Instrument);
@@ -51,6 +59,16 @@ public sealed partial class ShellViewModel : ObservableObject
         Pulse = new PulseViewModel();
         Bounce = new BounceViewModel { TitleOf = NodeTitle };
         ReturnLossView = new ReturnLossViewModel();
+
+        // Restore per-user preferences before any change handlers are wired.
+        _reopenLastFile = settings.ReopenLastFile;
+        IsLive = settings.IsLive;
+        ApplyPulseSettings(settings);
+        foreach (string path in settings.RecentFiles
+                     .Where(p => !string.IsNullOrWhiteSpace(p)).Take(MaxRecentFiles))
+        {
+            RecentFiles.Add(new RecentFile(path));
+        }
 
         // Cross-highlighting: the trace (or a bounce ray) points at canvas nodes;
         // hovered/selected canvas nodes shade their stretch of the trace.
@@ -166,6 +184,23 @@ public sealed partial class ShellViewModel : ObservableObject
         Pulse.Theme = theme;
     }
 
+    /// <summary>Restore the persisted pulse stimulus, ignoring anything a hand-edited
+    /// settings file made invalid (the same bounds RunPulse enforces).</summary>
+    private void ApplyPulseSettings(AppSettings settings)
+    {
+        static bool IsPositive(double value) => double.IsFinite(value) && value > 0;
+        if (IsPositive(settings.PulseRiseTimePs))
+            Pulse.RiseTimePs = settings.PulseRiseTimePs;
+        if (IsPositive(settings.PulseFallTimePs))
+            Pulse.FallTimePs = settings.PulseFallTimePs;
+        if (IsPositive(settings.PulseRateMegahertz))
+            Pulse.RateMegahertz = settings.PulseRateMegahertz;
+        if (settings.PulseDutyPercent is > 0 and < 100)
+            Pulse.DutyPercent = settings.PulseDutyPercent;
+        if (Pulse.PulseCountOptions.Contains(settings.PulsesDisplayed))
+            Pulse.PulsesDisplayed = settings.PulsesDisplayed;
+    }
+
     private int NextNoiseSeed() => Instrument.OneShot ? _shotSeed : _noiseRandom.Next();
 
     private void UpdateNoiseTimer()
@@ -245,11 +280,20 @@ public sealed partial class ShellViewModel : ObservableObject
 
     public ObservableCollection<IssueBadge> Badges { get; } = [];
 
-    /// <summary>Stops the live pipeline; call once when the window closes.</summary>
+    /// <summary>Stops the live pipeline and flushes the app settings; call once when
+    /// the window closes (after it has recorded its own placement).</summary>
     public void Shutdown()
     {
         _noiseTimer.Stop();
         _runner.Dispose();
+        _settings.IsLive = IsLive;
+        _settings.PulseRiseTimePs = Pulse.RiseTimePs;
+        _settings.PulseFallTimePs = Pulse.FallTimePs;
+        _settings.PulseRateMegahertz = Pulse.RateMegahertz;
+        _settings.PulseDutyPercent = Pulse.DutyPercent;
+        _settings.PulsesDisplayed = Pulse.PulsesDisplayed;
+        _settings.LastFile = _filePath is null ? null : Path.GetFullPath(_filePath);
+        AppSettingsStore.Save(_settings);
     }
 
     private static void RunOnUi(Action action)
@@ -339,6 +383,72 @@ public sealed partial class ShellViewModel : ObservableObject
         }
     }
 
+    // ---- recent files / reopen-last (persisted app settings) ----
+
+    private const int MaxRecentFiles = 10;
+
+    /// <summary>Most recently used first; feeds the Recent menu.</summary>
+    public ObservableCollection<RecentFile> RecentFiles { get; } = [];
+
+    /// <summary>Open the last session's project again on startup (Recent menu toggle).</summary>
+    [ObservableProperty]
+    private bool _reopenLastFile = true;
+
+    partial void OnReopenLastFileChanged(bool value)
+    {
+        _settings.ReopenLastFile = value;
+        AppSettingsStore.Save(_settings);
+    }
+
+    [RelayCommand]
+    private void OpenRecent(RecentFile? file)
+    {
+        if (file is null)
+            return;
+        if (!File.Exists(file.Path))
+        {
+            MessageBox.Show($"{file.Path} no longer exists.", "TDR Viewer",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            RecentFiles.Remove(file);
+            PersistRecentFiles();
+            return;
+        }
+
+        if (!ConfirmDiscard())
+            return;
+        OpenPath(file.Path);
+    }
+
+    /// <summary>Startup with no command-line file: bring back the last session's
+    /// project, when enabled and when it still exists.</summary>
+    public void ReopenLastProject()
+    {
+        if (ReopenLastFile && _settings.LastFile is { } path && File.Exists(path))
+            OpenPath(path);
+    }
+
+    /// <summary>A file was just opened or saved: move it to the top of the recent list
+    /// and persist immediately, so a crash does not forget it.</summary>
+    private void TouchRecentFile(string path)
+    {
+        string full = Path.GetFullPath(path);
+        var existing = RecentFiles.FirstOrDefault(
+            r => string.Equals(r.Path, full, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+            RecentFiles.Remove(existing);
+        RecentFiles.Insert(0, new RecentFile(full));
+        while (RecentFiles.Count > MaxRecentFiles)
+            RecentFiles.RemoveAt(RecentFiles.Count - 1);
+        _settings.LastFile = full;
+        PersistRecentFiles();
+    }
+
+    private void PersistRecentFiles()
+    {
+        _settings.RecentFiles = [.. RecentFiles.Select(r => r.Path)];
+        AppSettingsStore.Save(_settings);
+    }
+
     [RelayCommand]
     private void Save() => SaveTo(_filePath ?? AskSavePath());
 
@@ -384,6 +494,7 @@ public sealed partial class ShellViewModel : ObservableObject
                 ProjectSerializer.Serialize(Editor.ToDocument(Instrument.ToDocument())));
             _filePath = path;
             _isDirty = false;
+            TouchRecentFile(path);
             UpdateTitle();
             Status = $"Saved {FileDisplayName}.";
         }
@@ -416,6 +527,8 @@ public sealed partial class ShellViewModel : ObservableObject
 
         _filePath = filePath;
         _isDirty = false;
+        if (filePath is not null)
+            TouchRecentFile(filePath);
         Recompile();
         UpdateTitle();
         _undoCommitTimer.Stop();

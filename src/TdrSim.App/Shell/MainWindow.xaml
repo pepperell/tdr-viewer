@@ -4,6 +4,7 @@
         xmlns:nodify="https://miroiu.github.io/nodify"
         xmlns:plot="clr-namespace:TdrSim.App.Plot"
         xmlns:editor="clr-namespace:TdrSim.App.Editor"
+        xmlns:shell="clr-namespace:TdrSim.App.Shell"
         Title="{Binding Title}"
         Width="1400"
         Height="900"
@@ -16,6 +17,10 @@
     </Window.InputBindings>
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- Hands the shell view model to bindings outside the visual tree (the
+             Recent menu's CompositeCollection). -->
+        <shell:BindingProxy x:Key="ShellProxy" Data="{Binding}" />
 
         <DataTemplate x:Key="InputPortTemplate" DataType="{x:Type editor:PortViewModel}">
             <nodify:NodeInput Header="{Binding Label}"
@@ -113,6 +118,38 @@
                                     <Setter Property="CommandParameter" Value="{Binding}" />
                                 </Style>
                             </MenuItem.ItemContainerStyle>
+                        </MenuItem>
+                        <!-- Recent files (MRU first) plus the reopen-at-startup toggle;
+                             both persist in the app settings. -->
+                        <MenuItem Header="Recent ▾"
+                                  Padding="10,3"
+                                  Foreground="#DDD">
+                            <MenuItem.ItemContainerStyleSelector>
+                                <shell:RecentMenuStyleSelector>
+                                    <shell:RecentMenuStyleSelector.FileStyle>
+                                        <Style TargetType="MenuItem">
+                                            <Setter Property="Header" Value="{Binding Name}" />
+                                            <Setter Property="ToolTip" Value="{Binding Path}" />
+                                            <Setter Property="Foreground" Value="#1E1E1E" />
+                                            <Setter Property="Command"
+                                                    Value="{Binding DataContext.OpenRecentCommand,
+                                                            RelativeSource={RelativeSource AncestorType=Window}}" />
+                                            <Setter Property="CommandParameter" Value="{Binding}" />
+                                        </Style>
+                                    </shell:RecentMenuStyleSelector.FileStyle>
+                                </shell:RecentMenuStyleSelector>
+                            </MenuItem.ItemContainerStyleSelector>
+                            <MenuItem.ItemsSource>
+                                <CompositeCollection>
+                                    <CollectionContainer
+                                        Collection="{Binding Data.RecentFiles, Source={StaticResource ShellProxy}}" />
+                                    <Separator />
+                                    <MenuItem Header="Reopen last project at startup"
+                                              IsCheckable="True"
+                                              IsChecked="{Binding Data.ReopenLastFile, Source={StaticResource ShellProxy}}"
+                                              Foreground="#1E1E1E" />
+                                </CompositeCollection>
+                            </MenuItem.ItemsSource>
                         </MenuItem>
                     </Menu>
                     <Border Width="1" Background="#555" Margin="8,2" />

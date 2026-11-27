@@ -34,8 +34,10 @@ instrument noise floors, always-fit plots, custom cables, return-loss view). Wor
       loads (currently tooltip-only in the menu).
 - [ ] Canvas copy/paste/duplicate (serialize selection → re-id → offset → paste; the
       document layer makes this cheap).
-- [ ] App settings persistence (%APPDATA% JSON): window size, reopen last file,
-      recent-files menu, live toggle, pulse parameters.
+- [x] **App settings persistence** (%APPDATA%\TdrViewer\settings.json): window
+      size/maximized, reopen last file (toggle lives in the Recent menu), recent-files
+      menu, live toggle, pulse parameters. Best-effort IO: a missing or corrupt file
+      means defaults, never an error.
 - [ ] Trace x-extent on lossy lines: the always-fit scan follows slow loss creep, so
       a lossy chain's view runs far past its last echo (the bounce tab frames itself
       on its own arrivals instead). Consider the same activity-based extent for the

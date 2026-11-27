@@ -11,13 +11,16 @@ namespace TdrSim.App.Shell;
 
 public partial class MainWindow : Window
 {
+    private readonly AppSettings _settings;
     private readonly ShellViewModel _shell;
     private bool _anchorRefreshQueued;
 
     public MainWindow()
     {
         InitializeComponent();
-        _shell = new ShellViewModel();
+        _settings = AppSettingsStore.Load();
+        ApplyWindowPlacement();
+        _shell = new ShellViewModel(_settings);
         DataContext = _shell;
 
         // Nodify only recomputes a connector's Anchor on a few triggers (its own
@@ -85,12 +88,43 @@ public partial class MainWindow : Window
     /// <summary>Open a .tdrproj passed on the command line.</summary>
     public void OpenProject(string path) => _shell.OpenPath(path);
 
+    /// <summary>Startup with no command-line file: restore the last session's project.</summary>
+    public void ReopenLastProject() => _shell.ReopenLastProject();
+
+    /// <summary>Restore the last session's window size (clamped to the work area, in
+    /// case the monitor shrank) and maximized state; position stays CenterScreen.</summary>
+    private void ApplyWindowPlacement()
+    {
+        if (_settings.WindowWidth >= 600 && _settings.WindowHeight >= 400)
+        {
+            Width = Math.Min(_settings.WindowWidth, SystemParameters.WorkArea.Width);
+            Height = Math.Min(_settings.WindowHeight, SystemParameters.WorkArea.Height);
+        }
+
+        if (_settings.WindowMaximized)
+            WindowState = WindowState.Maximized;
+    }
+
     private void OnWindowClosing(object sender, CancelEventArgs e)
     {
         if (!_shell.ConfirmDiscard())
         {
             e.Cancel = true;
             return;
+        }
+
+        // The restore size is what comes back next launch, so a maximized (or
+        // minimized) window saves its restore bounds, not its screen-filling size.
+        _settings.WindowMaximized = WindowState == WindowState.Maximized;
+        if (WindowState == WindowState.Normal)
+        {
+            _settings.WindowWidth = ActualWidth;
+            _settings.WindowHeight = ActualHeight;
+        }
+        else if (!RestoreBounds.IsEmpty)
+        {
+            _settings.WindowWidth = RestoreBounds.Width;
+            _settings.WindowHeight = RestoreBounds.Height;
         }
 
         _shell.Shutdown();

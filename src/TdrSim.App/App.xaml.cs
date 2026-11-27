@@ -11,8 +11,11 @@ public partial class App : Application
         window.Show();
 
         // A .tdrproj passed on the command line (file association, drag-onto-exe,
-        // headless smoke tests) opens over the default document.
+        // headless smoke tests) opens over the default document; otherwise the last
+        // session's project comes back (when that setting is on).
         if (e.Args.Length > 0)
             window.OpenProject(e.Args[0]);
+        else
+            window.ReopenLastProject();
     }
 }
