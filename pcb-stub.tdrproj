@@ -1,7 +1,7 @@
 {
   "schemaVersion": 4,
   "instrument": {
-    "presetId": "tek-80e04"
+    "presetId": "tek-1502c"
   },
   "nodes": [
     {
@@ -25,7 +25,6 @@
       "y": 201,
       "cablePresetId": "fr4-microstrip-50",
       "lengthM": 0.05,
-      "connectorAId": "none",
       "connectorBId": "none"
     },
     {
